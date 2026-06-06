@@ -1,5 +1,5 @@
-import { ItemType } from './Inventory';
-import * as THREE from 'three';
+import { ItemType } from "./Inventory";
+import * as THREE from "three";
 
 export interface DroppedItem {
   id: string;

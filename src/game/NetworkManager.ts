@@ -22,15 +22,15 @@ class FakeClientSocket {
 
   connect() {
     this.ws = new WebSocket(this.url);
-    this.ws.binaryType = 'arraybuffer';
-    
+    this.ws.binaryType = "arraybuffer";
+
     this.ws.onopen = () => {
       this.connected = true;
-      if (this.handlers['connect']) {
-        this.handlers['connect'].forEach(h => h());
+      if (this.handlers["connect"]) {
+        this.handlers["connect"].forEach((h) => h());
       }
       for (const pending of this.emitQueue) {
-         this.ws!.send(encodePacketClient(pending.event, pending.args));
+        this.ws!.send(encodePacketClient(pending.event, pending.args));
       }
       this.emitQueue = [];
     };
@@ -38,21 +38,21 @@ class FakeClientSocket {
     this.ws.onmessage = async (e) => {
       const decoded = await decodePacketClient(e.data);
       if (decoded) {
-          if (decoded.event === 'set_id') {
-              this._id = decoded.args[0];
-          } else if (this.handlers[decoded.event]) {
-              const handlersCopy = [...this.handlers[decoded.event]];
-              for (const h of handlersCopy) {
-                  h(...decoded.args);
-              }
+        if (decoded.event === "set_id") {
+          this._id = decoded.args[0];
+        } else if (this.handlers[decoded.event]) {
+          const handlersCopy = [...this.handlers[decoded.event]];
+          for (const h of handlersCopy) {
+            h(...decoded.args);
           }
+        }
       }
     };
 
     this.ws.onclose = () => {
       this.connected = false;
-      if (this.handlers['disconnect']) {
-        this.handlers['disconnect'].forEach(h => h());
+      if (this.handlers["disconnect"]) {
+        this.handlers["disconnect"].forEach((h) => h());
       }
       if (this.reconnectCallback) {
         this.reconnectCallback();
@@ -60,7 +60,9 @@ class FakeClientSocket {
     };
   }
 
-  get id() { return this._id; }
+  get id() {
+    return this._id;
+  }
 
   on(event: string, handler: Function) {
     if (!this.handlers[event]) this.handlers[event] = [];
@@ -70,7 +72,9 @@ class FakeClientSocket {
   off(event: string, handler?: Function) {
     if (this.handlers[event]) {
       if (handler) {
-        this.handlers[event] = this.handlers[event].filter(h => h !== handler);
+        this.handlers[event] = this.handlers[event].filter(
+          (h) => h !== handler,
+        );
         if (this.handlers[event].length === 0) delete this.handlers[event];
       } else {
         delete this.handlers[event];
@@ -80,27 +84,27 @@ class FakeClientSocket {
 
   emit(event: string, ...args: any[]) {
     if (this.connected && this.ws) {
-       this.ws.send(encodePacketClient(event, args));
+      this.ws.send(encodePacketClient(event, args));
     } else if (!this.isVolatileMode) {
-       this.emitQueue.push({ event, args });
+      this.emitQueue.push({ event, args });
     }
   }
 
-  get volatile() { 
+  get volatile() {
     return {
       emit: (event: string, ...args: any[]) => {
         this.isVolatileMode = true;
         this.emit(event, ...args);
         this.isVolatileMode = false;
-      }
-    }; 
+      },
+    };
   }
 
   disconnect() {
     this.reconnectCallback = null;
     if (this.ws) {
-       this.ws.close();
-       this.ws = null;
+      this.ws.close();
+      this.ws = null;
     }
     this.connected = false;
   }
@@ -226,17 +230,17 @@ export class NetworkManager {
 
     // Check for CrazyGames invite params
     if (!modeOverride) {
-       const inviteParams = CrazyGamesManager.inviteParams;
-       if (inviteParams && inviteParams.server) {
-           mode = inviteParams.server;
-       }
+      const inviteParams = CrazyGamesManager.inviteParams;
+      if (inviteParams && inviteParams.server) {
+        mode = inviteParams.server;
+      }
     }
-    
+
     // Check if we should instantly join multiplayer (skip hub)
     if (!mode && CrazyGamesManager.isInstantMultiplayer) {
-       mode = "summerlab_" + Math.random().toString(36).substring(2, 9);
+      mode = "summerlab_" + Math.random().toString(36).substring(2, 9);
     }
-    
+
     if (!mode) mode = "summerlab";
 
     // Immediately update URL to provide instant visual feedback of server transition
@@ -246,7 +250,7 @@ export class NetworkManager {
 
     try {
       const region = settingsManager.getSettings().serverRegion || 'auto';
-      const euUrl = getSecureBackendUrl("https://summerlab-server.onrender.com");
+      const euUrl = getSecureBackendUrl("https://parkourtoon-server.onrender.com");
       const usUrl = getSecureBackendUrl("https://summerlab-server-hhnw.onrender.com");
       let baseUrl = euUrl;
 
@@ -294,7 +298,7 @@ export class NetworkManager {
           `?server=${data.serverId.replace("/", "")}`,
         );
       } else {
-        const connectMode = mode.includes('_') ? mode : `${mode}_1`;
+        const connectMode = mode.includes("_") ? mode : `${mode}_1`;
         this.connect(connectMode);
         window.history.pushState({}, "", `?server=${connectMode}`);
       }
@@ -302,12 +306,15 @@ export class NetworkManager {
     } catch (e) {
       console.error("Matchmaking failed:", e);
       if (isReconnect && this.reconnectAttempt < 5) {
-        setTimeout(() => {
-          this.reconnectAttempt++;
-          this.initMatchmaking(modeOverride, true);
-        }, Math.min(1000 * Math.pow(2, this.reconnectAttempt), 15000));
+        setTimeout(
+          () => {
+            this.reconnectAttempt++;
+            this.initMatchmaking(modeOverride, true);
+          },
+          Math.min(1000 * Math.pow(2, this.reconnectAttempt), 15000),
+        );
       } else {
-        const connectMode = mode.includes('_') ? mode : `${mode}_1`;
+        const connectMode = mode.includes("_") ? mode : `${mode}_1`;
         this.connect(connectMode);
         window.history.pushState({}, "", `?server=${connectMode}`);
       }
@@ -367,18 +374,23 @@ export class NetworkManager {
     this.blockChanges = {};
     this.serverName = serverName;
 
-    useGameStore.getState().setCurrentMode(serverName.split("_")[0] || "summerlab");
+    useGameStore
+      .getState()
+      .setCurrentMode(serverName.split("_")[0] || "summerlab");
     useGameStore.getState().setServerId(serverName);
 
-    const backendUrl = this.currentBackendUrl || getSecureBackendUrl("https://summerlab-server.onrender.com");
+    const backendUrl = this.currentBackendUrl || getSecureBackendUrl("https://parkourtoon-server.onrender.com");
     const wsUrl = backendUrl.replace(/^https:/, 'wss:').replace(/^http:/, 'ws:');
     this.socket = new FakeClientSocket(`${wsUrl}/ws/${serverName}`);
     
     this.socket.reconnectCallback = () => {
       console.log("WebSocket disconnected. Attempting to reconnect...");
-      setTimeout(() => {
-        this.initMatchmaking(this.serverName, true);
-      }, Math.min(1000 * Math.pow(2, this.reconnectAttempt), 15000));
+      setTimeout(
+        () => {
+          this.initMatchmaking(this.serverName, true);
+        },
+        Math.min(1000 * Math.pow(2, this.reconnectAttempt), 15000),
+      );
     };
 
     this.socket.on("connect", () => {
@@ -387,7 +399,7 @@ export class NetworkManager {
         isJoinable: true,
         inviteParams: { server: this.serverName },
         minPlayers: 2,
-        maxPlayers: 30
+        maxPlayers: 30,
       });
       CrazyGamesManager.showInviteButton({ server: this.serverName });
       for (const pending of this.pendingEmits) {
@@ -400,13 +412,21 @@ export class NetworkManager {
       if (!data) return;
       this.initData = data;
       this.players = data.players || {};
-      
+
       useGameStore.getState().setGameStartTime(data.gameStartTime || 0);
 
       // Initialize leaderboard
       for (const id in this.players) {
         const p = this.players[id];
-        useGameStore.getState().setLeaderboardPlayer(id, p.name || 'Unknown', p.team, p.kills || 0, p.deaths || 0);
+        useGameStore
+          .getState()
+          .setLeaderboardPlayer(
+            id,
+            p.name || "Unknown",
+            p.team,
+            p.kills || 0,
+            p.deaths || 0,
+          );
       }
 
       if (this._onInit) this._onInit(data);
@@ -496,44 +516,59 @@ export class NetworkManager {
       } else {
         this.players[player.id] = player;
       }
-      useGameStore.getState().setLeaderboardPlayer(player.id, player.name || 'Unknown', player.team, player.kills || 0, player.deaths || 0);
+      useGameStore
+        .getState()
+        .setLeaderboardPlayer(
+          player.id,
+          player.name || "Unknown",
+          player.team,
+          player.kills || 0,
+          player.deaths || 0,
+        );
       if (this.onPlayerJoined) this.onPlayerJoined(this.players[player.id]);
     });
 
-    this.socket.on("playersUpdate", (updates: Record<string, any[] | ArrayBuffer>) => {
-      // Legacy JSON support
-      for (const id in updates) {
-        if (id === this.id) continue;
-        const packedData = updates[id];
-        const packed = packedData instanceof ArrayBuffer ? new Float32Array(packedData) : (packedData as any[]);
-        this.applyPlayerUpdate(id, packed);
-      }
-    });
+    this.socket.on(
+      "playersUpdate",
+      (updates: Record<string, any[] | ArrayBuffer>) => {
+        // Legacy JSON support
+        for (const id in updates) {
+          if (id === this.id) continue;
+          const packedData = updates[id];
+          const packed =
+            packedData instanceof ArrayBuffer
+              ? new Float32Array(packedData)
+              : (packedData as any[]);
+          this.applyPlayerUpdate(id, packed);
+        }
+      },
+    );
 
     this.socket.on("playersUpdateB", (buffer: ArrayBuffer) => {
       const view = new DataView(buffer);
       const buf8 = new Uint8Array(buffer);
       let offset = 0;
-      const count = view.getUint16(offset, true); offset += 2;
-      
-      const decoder = new TextDecoder('utf8');
+      const count = view.getUint16(offset, true);
+      offset += 2;
+
+      const decoder = new TextDecoder("utf8");
       for (let i = 0; i < count; i++) {
         const idLen = buf8[offset++];
         const idBytes = buf8.subarray(offset, offset + idLen);
         const id = decoder.decode(idBytes);
         offset += idLen;
-        
+
         let floatOffset = offset;
         if (floatOffset % 4 !== 0) {
-            floatOffset += 4 - (floatOffset % 4);
+          floatOffset += 4 - (floatOffset % 4);
         }
         offset = floatOffset;
-        
+
         const packed = new Float32Array(buffer, offset, 12);
         offset += 12 * 4;
-        
+
         if (id !== this.id) {
-           this.applyPlayerUpdate(id, packed);
+          this.applyPlayerUpdate(id, packed);
         }
       }
     });
@@ -542,26 +577,27 @@ export class NetworkManager {
       const view = new DataView(buffer);
       const buf8 = new Uint8Array(buffer);
       let offset = 0;
-      const count = view.getUint16(offset, true); offset += 2;
-      
-      const decoder = new TextDecoder('utf8');
+      const count = view.getUint16(offset, true);
+      offset += 2;
+
+      const decoder = new TextDecoder("utf8");
       const unpacked: Record<string, any[]> = {};
-      
+
       for (let i = 0; i < count; i++) {
         const idLen = buf8[offset++];
         const idBytes = buf8.subarray(offset, offset + idLen);
         const id = decoder.decode(idBytes);
         offset += idLen;
-        
+
         let floatOffset = offset;
         if (floatOffset % 4 !== 0) {
-            floatOffset += 4 - (floatOffset % 4);
+          floatOffset += 4 - (floatOffset % 4);
         }
         offset = floatOffset;
-        
+
         const packed = new Float32Array(buffer, offset, 4);
         offset += 4 * 4;
-        
+
         unpacked[id] = [packed[0], packed[1], packed[2], packed[3]];
       }
       if (this.onMobsUpdate) this.onMobsUpdate(unpacked);
@@ -575,18 +611,30 @@ export class NetworkManager {
 
     this.socket.on("playerStatsUpdate", (data) => {
       if (!data || !data.id) return;
-      
+
       const p = this.players[data.id];
       const lb = useGameStore.getState().leaderboard;
       if (!lb[data.id] && p) {
-         // Create entry if missing to ensure realtime visibility
-         useGameStore.getState().setLeaderboardPlayer(data.id, p.name || 'Unknown', p.team, data.kills, data.deaths);
+        // Create entry if missing to ensure realtime visibility
+        useGameStore
+          .getState()
+          .setLeaderboardPlayer(
+            data.id,
+            p.name || "Unknown",
+            p.team,
+            data.kills,
+            data.deaths,
+          );
       } else {
-         useGameStore.getState().updateLeaderboardStats(data.id, data.kills, data.deaths);
+        useGameStore
+          .getState()
+          .updateLeaderboardStats(data.id, data.kills, data.deaths);
       }
 
       if (data.id === this.id && data.health !== undefined) {
-         window.dispatchEvent(new CustomEvent("syncHealth", { detail: { health: data.health } }));
+        window.dispatchEvent(
+          new CustomEvent("syncHealth", { detail: { health: data.health } }),
+        );
       }
     });
 
@@ -629,23 +677,23 @@ export class NetworkManager {
     this.socket.on("splats", (data: any[]) => {
       const g = (window as any).game;
       if (g && g.chocolateFluidSystem && data && data.length) {
-         for (const s of data) {
-           g.chocolateFluidSystem.spawnSplat(
-             new THREE.Vector3(s[0], s[1], s[2]),
-             new THREE.Vector3(s[3], s[4], s[5]),
-             new THREE.Color(s[6]),
-             true // fromNetwork flag? Wait, I need to add this param.
-           );
-         }
+        for (const s of data) {
+          g.chocolateFluidSystem.spawnSplat(
+            new THREE.Vector3(s[0], s[1], s[2]),
+            new THREE.Vector3(s[3], s[4], s[5]),
+            new THREE.Color(s[6]),
+            true, // fromNetwork flag? Wait, I need to add this param.
+          );
+        }
       }
     });
-    
+
     this.socket.on("cleanSplats", (keys: string[]) => {
       const g = (window as any).game;
       if (g && g.chocolateFluidSystem && keys && keys.length) {
-         for (const k of keys) {
-           g.chocolateFluidSystem.removeSplat(k, true);
-         }
+        for (const k of keys) {
+          g.chocolateFluidSystem.removeSplat(k, true);
+        }
       }
     });
 
@@ -665,17 +713,32 @@ export class NetworkManager {
       window.dispatchEvent(new CustomEvent("becomeSpectator"));
     });
 
-    this.socket.on("killCelebration", (data: { victimName: string; isPlayer: boolean; isBot: boolean; coinsRewarded?: number }) => {
-      useGameStore.getState().addKillCelebration(data.victimName, data.isPlayer, data.isBot, data.coinsRewarded);
-      try {
-        const soundName = data.isPlayer ? "level_up" : "orb";
-        const volume = data.isPlayer ? 0.7 : 0.45;
-        const pitch = data.isPlayer ? 1.1 : 1.0;
-        audioManager.play(soundName, volume, pitch);
-      } catch (err) {
-        console.warn("Could not play kill celebration sound:", err);
-      }
-    });
+    this.socket.on(
+      "killCelebration",
+      (data: {
+        victimName: string;
+        isPlayer: boolean;
+        isBot: boolean;
+        coinsRewarded?: number;
+      }) => {
+        useGameStore
+          .getState()
+          .addKillCelebration(
+            data.victimName,
+            data.isPlayer,
+            data.isBot,
+            data.coinsRewarded,
+          );
+        try {
+          const soundName = data.isPlayer ? "level_up" : "orb";
+          const volume = data.isPlayer ? 0.7 : 0.45;
+          const pitch = data.isPlayer ? 1.1 : 1.0;
+          audioManager.play(soundName, volume, pitch);
+        } catch (err) {
+          console.warn("Could not play kill celebration sound:", err);
+        }
+      },
+    );
 
     this.socket.on("playerRespawn", (data) => {
       if (this.onPlayerRespawn) this.onPlayerRespawn(data);
@@ -690,47 +753,94 @@ export class NetworkManager {
 
     this.socket.on("blockChanged", (data) => {
       let parsedData = data;
-      if (data instanceof ArrayBuffer || (data && typeof data.byteLength === 'number')) {
-         const buf = data instanceof ArrayBuffer ? data : data.buffer;
-         const offset = data instanceof ArrayBuffer ? 0 : data.byteOffset;
-         const len = data.byteLength;
-         const f32 = new Float32Array(buf, offset, Math.floor(len / 4));
-         parsedData = {
-           x: f32[0],
-           y: f32[1],
-           z: f32[2],
-           type: f32[3],
-           force: f32[4] > 0.5
-         };
+      if (
+        data instanceof ArrayBuffer ||
+        (data && typeof data.byteLength === "number")
+      ) {
+        const buf = data instanceof ArrayBuffer ? data : data.buffer;
+        const offset = data instanceof ArrayBuffer ? 0 : data.byteOffset;
+        const len = data.byteLength;
+        const f32 = new Float32Array(buf, offset, Math.floor(len / 4));
+        parsedData = {
+          x: f32[0],
+          y: f32[1],
+          z: f32[2],
+          type: f32[3],
+          force: f32[4] > 0.5,
+        };
       }
       if (this.onBlockChanged) this.onBlockChanged(parsedData);
     });
 
     this.socket.on("chatMessage", (data) => {
       if (this.onChatMessage) this.onChatMessage(data);
-      useGameStore.getState().addChatMessage(data.sender, data.message, data.team);
+      useGameStore
+        .getState()
+        .addChatMessage(data.sender, data.message, data.team);
     });
 
-    this.socket.on("friendRequest", (data: { sourceId: string, sourceName: string }) => {
-      useGameStore.getState().addFriendRequest(data.sourceId, data.sourceName);
-    });
+    this.socket.on(
+      "friendRequest",
+      (data: { sourceId: string; sourceName: string }) => {
+        useGameStore
+          .getState()
+          .addFriendRequest(data.sourceId, data.sourceName);
+      },
+    );
 
-    this.socket.on("friendAccept", (data: { sourceId: string, sourceName: string }) => {
-      useGameStore.getState().addChatMessage("System", `§e${data.sourceName} accepted your friend request!`);
-      // It is up to CommunitySidebar to actually add to 'friends' array locally, or we can trigger an event
-      window.dispatchEvent(new CustomEvent('friendAcceptedNetwork', { detail: data.sourceName }));
-    });
+    this.socket.on(
+      "friendAccept",
+      (data: { sourceId: string; sourceName: string }) => {
+        useGameStore
+          .getState()
+          .addChatMessage(
+            "System",
+            `§e${data.sourceName} accepted your friend request!`,
+          );
+        // It is up to CommunitySidebar to actually add to 'friends' array locally, or we can trigger an event
+        window.dispatchEvent(
+          new CustomEvent("friendAcceptedNetwork", { detail: data.sourceName }),
+        );
+      },
+    );
 
-    this.socket.on("partyInvite", (data: { sourceId: string, sourceName: string, server: string }) => {
-      useGameStore.getState().addPartyInvite(data.sourceId, data.sourceName, data.server);
-    });
+    this.socket.on(
+      "partyInvite",
+      (data: { sourceId: string; sourceName: string; server: string }) => {
+        useGameStore
+          .getState()
+          .addPartyInvite(data.sourceId, data.sourceName, data.server);
+      },
+    );
 
-    this.socket.on("partyAccept", (data: { sourceId: string, sourceName: string }) => {
-      useGameStore.getState().addChatMessage("System", `§e${data.sourceName} joined your party.`);
+    this.socket.on(
+      "partyAccept",
+      (data: { sourceId: string; sourceName: string }) => {
+        useGameStore
+          .getState()
+          .addChatMessage("System", `§e${data.sourceName} joined your party.`);
+      },
+    );
+
+    this.socket.on("levelUp", (data: { level: number; skill?: string }) => {
+      CrazyGamesManager.happyTime();
+      const currentMode = useGameStore.getState().currentMode;
+      let skillName = data.skill;
+      if (!skillName) {
+        if (currentMode === "summerlab") skillName = "Summer Lab";
+        else if (currentMode === "skyisland") skillName = "Sky Island";
+        else if (currentMode === "skybridge") skillName = "SkyBridge";
+        else if (currentMode === "skycastles") skillName = "SkyCastles";
+        else if (currentMode === "dungeondelver") skillName = "Dungeon Delver";
+        else skillName = "Island Level";
+      }
+      useGameStore.getState().addLevelUpPopup(skillName, data.level);
     });
 
     this.socket.on("shootArrow", (data) => {
-      window.dispatchEvent(new CustomEvent("networkShootArrow", { detail: data }));
+      window.dispatchEvent(
+        new CustomEvent("networkShootArrow", { detail: data }),
+      );
     });
 
     this.socket.on("switchServer", (mode) => {
@@ -777,7 +887,13 @@ export class NetworkManager {
   }
 
   move(position: THREE.Vector3, rotation: THREE.Euler) {
-    const f32 = new Float32Array([position.x, position.y, position.z, rotation.x, rotation.y]);
+    const f32 = new Float32Array([
+      position.x,
+      position.y,
+      position.z,
+      rotation.x,
+      rotation.y,
+    ]);
     this._volatile_emit("moveP", f32);
   }
 
@@ -808,7 +924,7 @@ export class NetworkManager {
   shootArrow(
     position: { x: number; y: number; z: number },
     velocity: { x: number; y: number; z: number },
-    power: number
+    power: number,
   ) {
     this._emit("shootArrow", { position, velocity, power });
   }
@@ -845,32 +961,35 @@ export class NetworkManager {
     this._emit("partyAccept", targetId);
   }
 
-  async requestChunkChanges(cx: number, cz: number): Promise<Uint16Array | null> {
+  async requestChunkChanges(
+    cx: number,
+    cz: number,
+  ): Promise<Uint16Array | null> {
     if (!this.socket) return null;
     return new Promise((resolve) => {
       const handler = (data: any) => {
         if (data.cx === cx && data.cz === cz) {
           this.socket.off("chunkData", handler);
           if (data.patch) {
-             const out = new Uint16Array(16*256*16);
-             out.fill(65535);
-             for(let i=0; i<data.patch.length; i+=2) {
-                 out[data.patch[i]] = data.patch[i+1];
-             }
-             resolve(out);
+            const out = new Uint16Array(16 * 256 * 16);
+            out.fill(65535);
+            for (let i = 0; i < data.patch.length; i += 2) {
+              out[data.patch[i]] = data.patch[i + 1];
+            }
+            resolve(out);
           } else if (data.data) {
-             const compressed = new Uint16Array(data.data);
-             const out = new Uint16Array(16*256*16);
-             decodeRLE(compressed, out);
-             resolve(out);
+            const compressed = new Uint16Array(data.data);
+            const out = new Uint16Array(16 * 256 * 16);
+            decodeRLE(compressed, out);
+            resolve(out);
           } else {
-             resolve(null);
+            resolve(null);
           }
         }
       };
       this.socket.on("chunkData", handler);
       this._emit("requestChunkChanges", { cx, cz });
-      
+
       // Auto resolve if timeout
       setTimeout(() => {
         this.socket.off("chunkData", handler);

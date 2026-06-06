@@ -20,6 +20,7 @@ import { DamageOverlay } from "./DamageOverlay";
 import { DamageNumbers } from "./DamageNumbers";
 import { GameMessages } from "./GameMessages";
 import { LevelUpUI } from "./LevelUpUI";
+import { TutorialUI } from "./TutorialUI";
 import { HotbarUI } from "./HotbarUI";
 import { KillCelebrationUI } from "./KillCelebrationUI";
 import { FluidColorPicker } from "./FluidColorPicker";
@@ -259,6 +260,7 @@ export function GameHUD({ game, isMobile, showDebug, setPauseMenuOpen }: any) {
           <DamageNumbers />
           <GameMessages />
           <LevelUpUI />
+          <TutorialUI />
           <KillCelebrationUI />
         </>
       )}

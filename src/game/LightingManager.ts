@@ -1,11 +1,11 @@
-import { World } from './World';
-import { isSolidBlock } from './TextureAtlas';
+import { World } from "./World";
+import { isSolidBlock } from "./TextureAtlas";
 
 export class LightingManager {
   world: World;
-  lightUpdates: { x: number, y: number, z: number, level: number }[] = [];
+  lightUpdates: { x: number; y: number; z: number; level: number }[] = [];
   lightUpdatesIndex: number = 0;
-  lightRemovals: { x: number, y: number, z: number, level: number }[] = [];
+  lightRemovals: { x: number; y: number; z: number; level: number }[] = [];
   lightRemovalsIndex: number = 0;
 
   constructor(world: World) {
@@ -25,13 +25,19 @@ export class LightingManager {
     let updatesProcessed = 0;
 
     const neighbors = [
-      { dx: 1, dy: 0, dz: 0 }, { dx: -1, dy: 0, dz: 0 },
-      { dx: 0, dy: 1, dz: 0 }, { dx: 0, dy: -1, dz: 0 },
-      { dx: 0, dy: 0, dz: 1 }, { dx: 0, dy: 0, dz: -1 }
+      { dx: 1, dy: 0, dz: 0 },
+      { dx: -1, dy: 0, dz: 0 },
+      { dx: 0, dy: 1, dz: 0 },
+      { dx: 0, dy: -1, dz: 0 },
+      { dx: 0, dy: 0, dz: 1 },
+      { dx: 0, dy: 0, dz: -1 },
     ];
 
     // Process removals first
-    while (this.lightRemovalsIndex < this.lightRemovals.length && updatesProcessed < MAX_LIGHT_UPDATES) {
+    while (
+      this.lightRemovalsIndex < this.lightRemovals.length &&
+      updatesProcessed < MAX_LIGHT_UPDATES
+    ) {
       const node = this.lightRemovals[this.lightRemovalsIndex++];
       updatesProcessed++;
 
@@ -43,7 +49,7 @@ export class LightingManager {
         const cx = nx >> 4;
         const cz = nz >> 4;
         if (!this.world.getChunk(cx, cz)) continue;
-        
+
         const nl = this.world.getLight(nx, ny, nz);
         if (nl > 0 && nl < node.level) {
           this.world.setLight(nx, ny, nz, 0);
@@ -63,7 +69,10 @@ export class LightingManager {
     }
 
     // Process additions
-    while (this.lightUpdatesIndex < this.lightUpdates.length && updatesProcessed < MAX_LIGHT_UPDATES) {
+    while (
+      this.lightUpdatesIndex < this.lightUpdates.length &&
+      updatesProcessed < MAX_LIGHT_UPDATES
+    ) {
       const node = this.lightUpdates[this.lightUpdatesIndex++];
       updatesProcessed++;
 
@@ -81,7 +90,12 @@ export class LightingManager {
         const nl = this.world.getLight(nx, ny, nz);
         if (nl + 2 <= node.level) {
           this.world.setLight(nx, ny, nz, node.level - 1);
-          this.lightUpdates.push({ x: nx, y: ny, z: nz, level: node.level - 1 });
+          this.lightUpdates.push({
+            x: nx,
+            y: ny,
+            z: nz,
+            level: node.level - 1,
+          });
         }
       }
     }

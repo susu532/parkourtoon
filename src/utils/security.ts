@@ -24,7 +24,7 @@ export const isHeadless = (): boolean => {
 // ===== DOMAIN LOCK =====
 const ALLOWED_DOMAINS = [
   'summerlab.vercel.app',
-  'summerlab-server.onrender.com',
+  'parkourtoon-server.onrender.com',
   'crazygames.com',
   '1001juegos.com',
   'speelspelletjes.nl',

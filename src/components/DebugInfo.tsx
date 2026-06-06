@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { Game } from '../game/Game';
+import React, { useEffect, useRef } from "react";
+import { Game } from "../game/Game";
 
 interface DebugInfoProps {
   game: Game | null;
@@ -15,17 +15,23 @@ export const DebugInfo: React.FC<DebugInfoProps> = ({ game, showDebug }) => {
     if (!showDebug || !game) return;
 
     let frameId: number;
-    let lastX = 0, lastY = 0, lastZ = 0;
-    
+    let lastX = 0,
+      lastY = 0,
+      lastZ = 0;
+
     const updateCoords = () => {
       const pos = game.player.position;
-      
+
       // Only update DOM if position changed significantly to save DOM writes
-      if (Math.abs(pos.x - lastX) > 0.001 || Math.abs(pos.y - lastY) > 0.001 || Math.abs(pos.z - lastZ) > 0.001) {
+      if (
+        Math.abs(pos.x - lastX) > 0.001 ||
+        Math.abs(pos.y - lastY) > 0.001 ||
+        Math.abs(pos.z - lastZ) > 0.001
+      ) {
         lastX = pos.x;
         lastY = pos.y;
         lastZ = pos.z;
-        
+
         if (coordRef.current) {
           coordRef.current.innerText = `XYZ: ${pos.x.toFixed(3)} / ${pos.y.toFixed(3)} / ${pos.z.toFixed(3)}`;
         }
@@ -36,7 +42,7 @@ export const DebugInfo: React.FC<DebugInfoProps> = ({ game, showDebug }) => {
           chunkRef.current.innerText = `Chunk: ${Math.floor(pos.x / 16)} ${Math.floor(pos.z / 16)}`;
         }
       }
-      
+
       frameId = requestAnimationFrame(updateCoords);
     };
 
@@ -48,7 +54,9 @@ export const DebugInfo: React.FC<DebugInfoProps> = ({ game, showDebug }) => {
 
   return (
     <div className="absolute top-4 left-4 text-white font-mono text-sm bg-black/60 p-3 rounded-lg pointer-events-none border border-white/20 shadow-xl">
-      <div className="text-green-400 font-bold mb-1 border-b border-white/10 pb-1">DEBUG INFO</div>
+      <div className="text-green-400 font-bold mb-1 border-b border-white/10 pb-1">
+        DEBUG INFO
+      </div>
       <div className="space-y-0.5">
         <div ref={coordRef}>XYZ: 0.000 / 0.000 / 0.000</div>
         <div ref={blockRef}>Block: 0 0 0</div>

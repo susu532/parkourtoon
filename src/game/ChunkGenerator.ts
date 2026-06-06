@@ -53,10 +53,15 @@ export async function generateChunkMethod(
       // }
 
       if (world.isSummerLab) {
-        for (let y = 0; y < CHUNK_HEIGHT; y++) {
-          const worldY = y + WORLD_Y_OFFSET;
-          const block = getSummerLabBlock(worldX, worldY, worldZ);
-          chunk.setBlockFast(x, y, z, block);
+        if (distFromCenter <= 85) {
+          for (let y = 0; y < CHUNK_HEIGHT; y++) {
+            const worldY = y + WORLD_Y_OFFSET;
+            const block = getSummerLabBlock(worldX, worldY, worldZ);
+            if (block !== 0) {
+              // 0 is AIR
+              chunk.setBlockFast(x, y, z, block);
+            }
+          }
         }
         continue;
       }
@@ -977,7 +982,10 @@ export async function generateChunkMethod(
                   y === tunnelY + 2 &&
                   Math.abs(localX) === 1
                 ) {
-                  blockToPlace = localX === 1 ? BLOCK.TORCH_WALL_X_POS : BLOCK.TORCH_WALL_X_NEG;
+                  blockToPlace =
+                    localX === 1
+                      ? BLOCK.TORCH_WALL_X_POS
+                      : BLOCK.TORCH_WALL_X_NEG;
                 }
               } else if (y === tunnelY - 1) {
                 blockToPlace = BLOCK.STONE;
@@ -1068,12 +1076,7 @@ export async function generateChunkMethod(
           // Explicit Chests near tree
           if ((worldX === 75 || worldX === -75) && worldZ === 1) {
             if (5 - WORLD_Y_OFFSET >= 0 && 5 - WORLD_Y_OFFSET < CHUNK_HEIGHT) {
-              chunk.setBlockFast(
-                ix,
-                5 - WORLD_Y_OFFSET,
-                iz,
-                BLOCK.CHEST
-              );
+              chunk.setBlockFast(ix, 5 - WORLD_Y_OFFSET, iz, BLOCK.CHEST);
             }
           }
 
@@ -1202,7 +1205,11 @@ export async function generateChunkMethod(
           lightLevel = Math.max(0, lightLevel - 1);
         }
 
-        if (type === BLOCK.GLOWSTONE || type === BLOCK.LAVA || isAnyTorch(type)) {
+        if (
+          type === BLOCK.GLOWSTONE ||
+          type === BLOCK.LAVA ||
+          isAnyTorch(type)
+        ) {
           lightLevel = 14;
         }
 

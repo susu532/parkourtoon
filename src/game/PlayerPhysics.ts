@@ -1,10 +1,10 @@
-import { useGameStore } from '../store/gameStore';
-import * as THREE from 'three';
-import { Player } from './Player';
-import { BLOCK, isSolidBlock, isSlab } from './TextureAtlas';
-import { audioManager } from './AudioManager';
+import { useGameStore } from "../store/gameStore";
+import * as THREE from "three";
+import { Player } from "./Player";
+import { BLOCK, isSolidBlock, isSlab } from "./TextureAtlas";
+import { audioManager } from "./AudioManager";
 
-const _moveEuler = new THREE.Euler(0, 0, 0, 'YXZ');
+const _moveEuler = new THREE.Euler(0, 0, 0, "YXZ");
 const _moveVec = new THREE.Vector3();
 const _currentPos = new THREE.Vector3();
 const _nextPosX = new THREE.Vector3();
@@ -15,7 +15,7 @@ const _checkPos = new THREE.Vector3();
 export class PlayerPhysics {
   player: Player;
   private lastLavaDamageTime: number = 0;
-  
+
   constructor(player: Player) {
     this.player = player;
   }
@@ -52,9 +52,9 @@ export class PlayerPhysics {
   }
 
   isSupported(pos: THREE.Vector3): boolean {
-    // Use a much smaller radius (e.g. 0.05) for support check so player 
+    // Use a much smaller radius (e.g. 0.05) for support check so player
     // stops right before the center leaves the block, just like MC sneaking
-    const supportRadius = 0.05; 
+    const supportRadius = 0.05;
     const minX = Math.floor(pos.x - supportRadius);
     const maxX = Math.floor(pos.x + supportRadius);
     const minZ = Math.floor(pos.z - supportRadius);
@@ -92,11 +92,19 @@ export class PlayerPhysics {
     }
 
     // Check for water
-    const headBlock = p.world.getBlock(Math.floor(p.worldPosition.x), Math.floor(p.worldPosition.y), Math.floor(p.worldPosition.z));
-    const feetBlock = p.world.getBlock(Math.floor(p.worldPosition.x), Math.floor(p.worldPosition.y - p.playerHeight + 0.1), Math.floor(p.worldPosition.z));
+    const headBlock = p.world.getBlock(
+      Math.floor(p.worldPosition.x),
+      Math.floor(p.worldPosition.y),
+      Math.floor(p.worldPosition.z),
+    );
+    const feetBlock = p.world.getBlock(
+      Math.floor(p.worldPosition.x),
+      Math.floor(p.worldPosition.y - p.playerHeight + 0.1),
+      Math.floor(p.worldPosition.z),
+    );
 
     const wasSwimming = p.isSwimming;
-    
+
     // Check Water & Lava
     const headWater = headBlock === BLOCK.WATER;
     const feetWater = feetBlock === BLOCK.WATER;
@@ -113,18 +121,23 @@ export class PlayerPhysics {
       if (now - this.lastLavaDamageTime > 500) {
         p.takeDamage(4, undefined, false, "burnt to crisp");
         this.lastLavaDamageTime = now;
-        
+
         // Spawn fire/smoke particles if available
-        window.dispatchEvent(new CustomEvent('spawnParticles', { 
-          detail: { pos: p.worldPosition.clone().addScalar(0.5), type: BLOCK.LAVA } 
-        }));
+        window.dispatchEvent(
+          new CustomEvent("spawnParticles", {
+            detail: {
+              pos: p.worldPosition.clone().addScalar(0.5),
+              type: BLOCK.LAVA,
+            },
+          }),
+        );
       }
     }
 
     if (p.isSwimming && !wasSwimming) {
-      audioManager.play('splash', 0.4, 0.8 + Math.random() * 0.4);
+      audioManager.play("splash", 0.4, 0.8 + Math.random() * 0.4);
     }
-    
+
     // Track highest Y for fall damage
     if (p.canJump || p.isFlying || p.isSwimming) {
       p.highestY = p.worldPosition.y;
@@ -134,28 +147,30 @@ export class PlayerPhysics {
 
     p.velocity.x *= Math.exp(-10.0 * delta);
     p.velocity.z *= Math.exp(-10.0 * delta);
-    
-    const horizontalVelocity = Math.sqrt(p.velocity.x * p.velocity.x + p.velocity.z * p.velocity.z);
+
+    const horizontalVelocity = Math.sqrt(
+      p.velocity.x * p.velocity.x + p.velocity.z * p.velocity.z,
+    );
     const isMoving = horizontalVelocity > 0.1;
 
     const input = p.inputController; // Get input states
-    
+
     if (p.isSwimming) {
       const drag = inLava ? 8.0 : 5.0; // Lava is thicker than water
-      p.velocity.y *= Math.exp(-drag * delta); 
+      p.velocity.y *= Math.exp(-drag * delta);
       p.velocity.y -= p.gravity * 0.1 * delta; // Reduced gravity
-      
+
       const vertDir = Number(input.moveUp) - Number(input.moveDown);
       if (input.moveUp || input.moveDown) {
         p.velocity.y += vertDir * p.speed * (inLava ? 0.3 : 0.5) * delta * 10.0;
       }
-      
+
       // Play swim sound or sizzle
       if (isMoving && Math.sin(performance.now() * 0.01) > 0.9) {
         if (inLava) {
-           audioManager.play('splash', 0.1, 0.5); // "sizzle" equivalent
+          audioManager.play("splash", 0.1, 0.5); // "sizzle" equivalent
         } else {
-           audioManager.play('swim', 0.2, 0.8 + Math.random() * 0.4);
+          audioManager.play("swim", 0.2, 0.8 + Math.random() * 0.4);
         }
       }
     } else if (!p.isFlying) {
@@ -170,42 +185,61 @@ export class PlayerPhysics {
       p.velocity.y *= Math.exp(-10.0 * delta);
       const vertDir = Number(input.moveUp) - Number(input.moveDown);
       const currentSpeed = p.flySpeed;
-      if (input.moveUp || input.moveDown) p.velocity.y += vertDir * currentSpeed * delta * 10.0;
+      if (input.moveUp || input.moveDown)
+        p.velocity.y += vertDir * currentSpeed * delta * 10.0;
     }
 
     p.direction.z = Number(input.moveForward) - Number(input.moveBackward);
     p.direction.x = Number(input.moveRight) - Number(input.moveLeft);
     p.direction.normalize();
 
-    const currentSpeed = p.isFlying ? p.flySpeed : 
-      (p.isGliding ? p.flySpeed * 0.8 :
-      (p.isSwimming ? (input.isSprinting ? p.sprintSpeed * (inLava ? 0.25 : 0.5) : p.speed * (inLava ? 0.25 : 0.5)) : 
-      (input.isSprinting ? p.sprintSpeed : 
-      ((input.isCrouching || input.isBlocking) ? p.crouchSpeed : p.speed))));
+    const currentSpeed = p.isFlying
+      ? p.flySpeed
+      : p.isGliding
+        ? p.flySpeed * 0.8
+        : p.isSwimming
+          ? input.isSprinting
+            ? p.sprintSpeed * (inLava ? 0.25 : 0.5)
+            : p.speed * (inLava ? 0.25 : 0.5)
+          : input.isSprinting
+            ? p.sprintSpeed
+            : input.isCrouching || input.isBlocking
+              ? p.crouchSpeed
+              : p.speed;
 
-    if (input.moveForward || input.moveBackward) p.velocity.z -= p.direction.z * currentSpeed * delta * 10.0;
-    if (input.moveLeft || input.moveRight) p.velocity.x += p.direction.x * currentSpeed * delta * 10.0;
-    
+    if (input.moveForward || input.moveBackward)
+      p.velocity.z -= p.direction.z * currentSpeed * delta * 10.0;
+    if (input.moveLeft || input.moveRight)
+      p.velocity.x += p.direction.x * currentSpeed * delta * 10.0;
+
     // Apply movement
     const currentPos = _currentPos.copy(p.worldPosition);
-    
+
     // Extract pure yaw from camera rotation for movement
-    const moveEuler = _moveEuler.set(0, p.cameraYaw, 0, 'YXZ');
+    const moveEuler = _moveEuler.set(0, p.cameraYaw, 0, "YXZ");
     const moveVec = _moveVec.set(p.velocity.x * delta, 0, p.velocity.z * delta);
     moveVec.applyEuler(moveEuler);
 
     // Apply world-space knockback with smooth decay
     const kbDecay = 1.0 - Math.pow(0.01, delta); // Strong friction but smooth
-    p.knockbackVelocity.x = THREE.MathUtils.lerp(p.knockbackVelocity.x, 0, kbDecay);
-    p.knockbackVelocity.z = THREE.MathUtils.lerp(p.knockbackVelocity.z, 0, kbDecay);
-    
+    p.knockbackVelocity.x = THREE.MathUtils.lerp(
+      p.knockbackVelocity.x,
+      0,
+      kbDecay,
+    );
+    p.knockbackVelocity.z = THREE.MathUtils.lerp(
+      p.knockbackVelocity.z,
+      0,
+      kbDecay,
+    );
+
     moveVec.x += p.knockbackVelocity.x * delta;
     moveVec.z += p.knockbackVelocity.z * delta;
 
     // X collision and shifting
     const nextPosX = _nextPosX.copy(currentPos);
     nextPosX.x += moveVec.x;
-    
+
     // World boundary check (Invisible walls)
     const distSqX = nextPosX.x * nextPosX.x + nextPosX.z * nextPosX.z;
     const isInsideBoundaryX = distSqX < p.world.worldSize * p.world.worldSize;
@@ -233,7 +267,7 @@ export class PlayerPhysics {
             currentPos.x = nextPosX.x;
             const oldY = currentPos.y;
             currentPos.y += 0.51;
-            p.cameraYOffset -= (currentPos.y - oldY);
+            p.cameraYOffset -= currentPos.y - oldY;
             p.velocity.y = 0;
           } else {
             // Try full block step
@@ -242,7 +276,7 @@ export class PlayerPhysics {
               currentPos.x = nextPosX.x;
               const oldY = currentPos.y;
               currentPos.y += 1.05;
-              p.cameraYOffset -= (currentPos.y - oldY);
+              p.cameraYOffset -= currentPos.y - oldY;
               p.velocity.y = 0;
             } else {
               p.knockbackVelocity.x = 0;
@@ -255,11 +289,11 @@ export class PlayerPhysics {
     } else {
       p.knockbackVelocity.x = 0;
     }
-    
+
     // Z collision and shifting
     const nextPosZ = _nextPosZ.copy(currentPos);
     nextPosZ.z += moveVec.z;
-    
+
     const distSqZ = currentPos.x * currentPos.x + nextPosZ.z * nextPosZ.z;
     const isInsideBoundaryZ = distSqZ < p.world.worldSize * p.world.worldSize;
 
@@ -285,7 +319,7 @@ export class PlayerPhysics {
             currentPos.z = nextPosZ.z;
             const oldY = currentPos.y;
             currentPos.y += 0.51;
-            p.cameraYOffset -= (currentPos.y - oldY);
+            p.cameraYOffset -= currentPos.y - oldY;
             p.velocity.y = 0;
           } else {
             // Try full block step
@@ -294,7 +328,7 @@ export class PlayerPhysics {
               currentPos.z = nextPosZ.z;
               const oldY = currentPos.y;
               currentPos.y += 1.05;
-              p.cameraYOffset -= (currentPos.y - oldY);
+              p.cameraYOffset -= currentPos.y - oldY;
               p.velocity.y = 0;
             } else {
               p.knockbackVelocity.z = 0;
@@ -311,46 +345,62 @@ export class PlayerPhysics {
     // Y collision
     currentPos.y += p.velocity.y * delta;
     if (!p.isFlying && this.checkCollision(currentPos)) {
-      if (p.velocity.y <= 0) { // Include 0 to prevent sinking while standing
-        const blockBelow = p.world.getBlock(Math.floor(currentPos.x), Math.floor(currentPos.y - p.playerHeight - 0.1), Math.floor(currentPos.z));
+      if (p.velocity.y <= 0) {
+        // Include 0 to prevent sinking while standing
+        const blockBelow = p.world.getBlock(
+          Math.floor(currentPos.x),
+          Math.floor(currentPos.y - p.playerHeight - 0.1),
+          Math.floor(currentPos.z),
+        );
 
         if (blockBelow === BLOCK.SLIME_BLOCK) {
           // Bounce effect!
           p.velocity.y = Math.min(Math.abs(p.velocity.y) * 1.5, 35);
           if (p.velocity.y < 10) p.velocity.y = 10;
           p.wasInAir = true;
-          audioManager.playStep('stone'); // Or slime if added
+          audioManager.playStep("stone"); // Or slime if added
           return; // Skip normal landing
         }
 
-        if (blockBelow === BLOCK.LAUNCHER || 
-            blockBelow === BLOCK.LAUNCHER_WALL_X_NEG || blockBelow === BLOCK.LAUNCHER_WALL_X_POS ||
-            blockBelow === BLOCK.LAUNCHER_WALL_Z_NEG || blockBelow === BLOCK.LAUNCHER_WALL_Z_POS) {
+        if (
+          blockBelow === BLOCK.LAUNCHER ||
+          blockBelow === BLOCK.LAUNCHER_WALL_X_NEG ||
+          blockBelow === BLOCK.LAUNCHER_WALL_X_POS ||
+          blockBelow === BLOCK.LAUNCHER_WALL_Z_NEG ||
+          blockBelow === BLOCK.LAUNCHER_WALL_Z_POS
+        ) {
           // Launch the player High and far!
           p.velocity.y = 40; // High bounce
-          
-          if (blockBelow === BLOCK.LAUNCHER_WALL_Z_POS) p.knockbackVelocity.z = 1500;
-          if (blockBelow === BLOCK.LAUNCHER_WALL_Z_NEG) p.knockbackVelocity.z = -1500;
-          if (blockBelow === BLOCK.LAUNCHER_WALL_X_POS) p.knockbackVelocity.x = 1500;
-          if (blockBelow === BLOCK.LAUNCHER_WALL_X_NEG) p.knockbackVelocity.x = -1500;
-          
+
+          if (blockBelow === BLOCK.LAUNCHER_WALL_Z_POS)
+            p.knockbackVelocity.z = 1500;
+          if (blockBelow === BLOCK.LAUNCHER_WALL_Z_NEG)
+            p.knockbackVelocity.z = -1500;
+          if (blockBelow === BLOCK.LAUNCHER_WALL_X_POS)
+            p.knockbackVelocity.x = 1500;
+          if (blockBelow === BLOCK.LAUNCHER_WALL_X_NEG)
+            p.knockbackVelocity.x = -1500;
+
           p.wasInAir = true;
-          audioManager.playStep('stone'); 
+          audioManager.playStep("stone");
           return; // Skip normal landing
         }
 
         // Landing detection
         if (p.wasInAir && Math.abs(p.velocity.y) > 5) {
           p.landingTimer = 1.0;
-          let surface = 'stone';
-          if (blockBelow === BLOCK.GRASS || blockBelow === BLOCK.DIRT) surface = 'grass';
-          else if (blockBelow === BLOCK.SAND) surface = 'sand';
-          else if (blockBelow === BLOCK.WOOD || blockBelow === BLOCK.PLANKS) surface = 'wood';
+          let surface = "stone";
+          if (blockBelow === BLOCK.GRASS || blockBelow === BLOCK.DIRT)
+            surface = "grass";
+          else if (blockBelow === BLOCK.SAND) surface = "sand";
+          else if (blockBelow === BLOCK.WOOD || blockBelow === BLOCK.PLANKS)
+            surface = "wood";
           audioManager.playStep(surface);
         }
-        
-        // Fall damage calculation
+
+        // Fall damage disabled
         const fallDistance = p.highestY - currentPos.y;
+        /*
         if (fallDistance > 3.5 && !p.isFlying && !p.isSwimming && !p.world.isHub && !p.isGliding && (Date.now() - p.lastRespawnTime > 5000)) {
           const damage = Math.floor(fallDistance - 3);
           if (damage > 0) {
@@ -358,9 +408,10 @@ export class PlayerPhysics {
             useGameStore.getState().addMessage(`You took ${damage * 5} fall damage!`, "#FF5555");
           }
         }
-        
+        */
+
         if (p.isGliding) p.isGliding = false;
-        
+
         p.canJump = true;
         p.wasInAir = false;
         p.highestY = currentPos.y;
@@ -373,7 +424,7 @@ export class PlayerPhysics {
         const minZ = Math.floor(currentPos.z - p.playerRadius);
         const maxZ = Math.floor(currentPos.z + p.playerRadius);
         const yCheck = Math.floor(currentPos.y - p.playerHeight);
-        
+
         let highestBlockTop = -Infinity;
         for (let x = minX; x <= maxX; x++) {
           for (let ySearch = yCheck - 1; ySearch <= yCheck + 1; ySearch++) {
@@ -382,14 +433,18 @@ export class PlayerPhysics {
               if (isSolidBlock(block)) {
                 const blockTop = isSlab(block) ? ySearch + 0.5 : ySearch + 1.0;
                 // Only consider blocks that our bottom intersected or hit
-                if (blockTop > highestBlockTop && blockTop <= currentPos.y - p.playerHeight - (p.velocity.y * delta) + 0.1) {
+                if (
+                  blockTop > highestBlockTop &&
+                  blockTop <=
+                    currentPos.y - p.playerHeight - p.velocity.y * delta + 0.1
+                ) {
                   highestBlockTop = blockTop;
                 }
               }
             }
           }
         }
-        
+
         if (highestBlockTop !== -Infinity) {
           hitTop = highestBlockTop;
         }
@@ -416,7 +471,7 @@ export class PlayerPhysics {
     if (currentPos.y < -100) {
       if (p.world.isHub) {
         // Instant silent respawn for hub
-        currentPos.set(0, 10, 0); 
+        currentPos.set(0, 10, 0);
         p.velocity.set(0, 0, 0);
         p.highestY = 10;
         p.wasInAir = false;

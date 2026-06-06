@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 export function SummerLabTitleUI() {
   return (
@@ -11,42 +11,21 @@ export function SummerLabTitleUI() {
           margin: 0,
         }}
       >
-        <span 
-          style={{ 
-            color: "#FFFF55", // Light lavender/violet prefix
-            textShadow: "1.5px 1.5px 0px #3B0764, 2px 2px 4px rgba(0,0,0,0.8)",
-            letterSpacing: "0.08em",
-            fontWeight: "bold",
-            fontSize: "0.55em",
-          }}
-        >
-          starplex.io
-        </span>
-        <span 
-          style={{ 
-            color: "#C084FC",
-            textShadow: "1.5px 1.5px 0px #2E0854, 2px 2px 4px rgba(0,0,0,0.8)",
-            fontWeight: "bold",
-            fontSize: "0.55em",
-          }}
-        >
-          -
-        </span>
         <span
           style={{
-            background: "linear-gradient(to bottom, #f472b6, #a855f7)", // Pinkish-violet to royal violet gradient
+            background: "linear-gradient(to bottom, #ff99cc, #ff1493)", // Pink gradient for ParkourToon
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
-            WebkitTextStroke: "1px rgba(50,0,60,0.8)",
+            WebkitTextStroke: "1px rgba(60,0,20,0.8)",
             letterSpacing: "0.12em",
             filter: `
-              drop-shadow(1px 1px 0px #581c87) 
-              drop-shadow(1px 2px 0px #3b0764) 
+              drop-shadow(1px 1px 0px #800040) 
+              drop-shadow(1px 2px 0px #4d0026) 
               drop-shadow(3px 4px 8px rgba(0,0,0,0.6))
             `,
           }}
         >
-          Summer Lab
+          ParkourToon
         </span>
       </h1>
     </div>

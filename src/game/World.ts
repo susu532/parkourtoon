@@ -11,6 +11,7 @@ import {
   isAnyTorch,
 } from "./TextureAtlas";
 import { getBattleRoyaleBlock } from "./generation/BattleRoyaleGenerator";
+import { getSummerLabBlock } from "./generation/SummerLabGenerator";
 import { audioManager } from "./AudioManager";
 import { settingsManager } from "./Settings";
 import { LightingManager } from "./LightingManager";
@@ -101,7 +102,6 @@ export class World {
     this.updater = new WorldUpdater(this);
     this.raycaster = new WorldRaycast(this);
 
-    
     let texture: THREE.Texture;
     if (this.isSummerLab) {
       texture = createSummerLabTextureAtlas();
@@ -109,14 +109,20 @@ export class World {
       texture = createTextureAtlas();
     }
 
-    const hwConcurrency = (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || 4;
-    const isMobileDevice = typeof window !== 'undefined' && 
-      (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
-      ('ontouchstart' in window) || 
-      (navigator.maxTouchPoints > 0));
+    const hwConcurrency =
+      (typeof navigator !== "undefined" && navigator.hardwareConcurrency) || 4;
+    const isMobileDevice =
+      typeof window !== "undefined" &&
+      (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        navigator.userAgent,
+      ) ||
+        "ontouchstart" in window ||
+        navigator.maxTouchPoints > 0);
 
     // Limit workers to prevent Context Switching overhead on low-end CPUs
-    const workerCount = isMobileDevice ? 2 : Math.max(1, Math.floor(hwConcurrency / 2));
+    const workerCount = isMobileDevice
+      ? 2
+      : Math.max(1, Math.floor(hwConcurrency / 2));
 
     for (let i = 0; i < workerCount; i++) {
       const worker = new MesherWorker();
@@ -129,6 +135,10 @@ export class World {
       vertexColors: true,
       roughness: 0.8,
       metalness: 0.1,
+      depthWrite: true,
+      polygonOffset: true,
+      polygonOffsetFactor: 1,
+      polygonOffsetUnits: 1,
     });
 
     this.opaqueMaterial.onBeforeCompile = (shader) => {
@@ -521,7 +531,7 @@ export class World {
               gl_FragColor.rgb = clamp(color + tint, 0.0, 1.0);
             }
           #endif
-          `
+          `,
         );
     };
 
@@ -929,7 +939,7 @@ export class World {
               gl_FragColor.rgb = clamp(color + tint, 0.0, 1.0);
             }
           #endif
-          `
+          `,
         );
     };
   }
@@ -945,22 +955,28 @@ export class World {
       (this.opaqueMaterial as any).userData.uPerformanceMode.value =
         isPerformanceMode ? 1.0 : 0.0;
     }
-    
+
     // Update uIsSummerLab
     if ((this.opaqueMaterial as any).userData?.uIsSummerLab) {
-      (this.opaqueMaterial as any).userData.uIsSummerLab.value = isSummerLab ? 1.0 : 0.0;
+      (this.opaqueMaterial as any).userData.uIsSummerLab.value = isSummerLab
+        ? 1.0
+        : 0.0;
     }
     if ((this.transparentMaterial as any).userData?.uIsSummerLab) {
-      (this.transparentMaterial as any).userData.uIsSummerLab.value = isSummerLab ? 1.0 : 0.0;
+      (this.transparentMaterial as any).userData.uIsSummerLab.value =
+        isSummerLab ? 1.0 : 0.0;
     }
 
     // Update uHideShininess
     const hideShininess = settings.hideShininess;
     if ((this.opaqueMaterial as any).userData?.uHideShininess) {
-      (this.opaqueMaterial as any).userData.uHideShininess.value = hideShininess ? 1.0 : 0.0;
+      (this.opaqueMaterial as any).userData.uHideShininess.value = hideShininess
+        ? 1.0
+        : 0.0;
     }
     if ((this.transparentMaterial as any).userData?.uHideShininess) {
-      (this.transparentMaterial as any).userData.uHideShininess.value = hideShininess ? 1.0 : 0.0;
+      (this.transparentMaterial as any).userData.uHideShininess.value =
+        hideShininess ? 1.0 : 0.0;
     }
     if ((this.transparentMaterial as any).userData?.uPerformanceMode) {
       (this.transparentMaterial as any).userData.uPerformanceMode.value =
@@ -1101,22 +1117,35 @@ export class World {
 
   isIndestructible(x: number, y: number, z: number) {
     let isHub = false;
+    let isSummerLab = false;
     if (typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);
       const serverName = urlParams.get("server") || "dungeondelver";
       isHub = serverName.startsWith("hub");
+      isSummerLab = serverName.startsWith("summerlab");
     }
 
     // The entire hub world is indestructible to prevent players from mining the spawn
     if (isHub) return true;
 
-    if (this.isDungeonDelver && Math.floor(x) === 0 && Math.floor(y) === 0 && Math.floor(z) === 0) {
+    // Platform blocks generated are unbreakable in SummerLab
+    if (isSummerLab) {
+      if (getSummerLabBlock(Math.floor(x), Math.floor(y), Math.floor(z)) !== 0)
+        return true;
+    }
+
+    if (
+      this.isDungeonDelver &&
+      Math.floor(x) === 0 &&
+      Math.floor(y) === 0 &&
+      Math.floor(z) === 0
+    ) {
       return true;
     }
 
     const absX = Math.abs(Math.floor(x));
     const absZ = Math.abs(Math.floor(z));
-    
+
     // Protect the 4 map corners from block placement/destruction
     if (absX >= 29 && absX <= 34 && absZ >= 76 && absZ <= 81) {
       return true;
@@ -1365,7 +1394,8 @@ export class World {
           for (let lz = 0; lz < CHUNK_SIZE; lz++) {
             for (let lx = 0; lx < CHUNK_SIZE; lx++) {
               const type = changes[lx | (lz << 4) | (ly << 8)];
-              if (type !== 65535) { // 65535 identifies 'unmodified'
+              if (type !== 65535) {
+                // 65535 identifies 'unmodified'
                 chunk.setBlockFast(lx, ly, lz, type);
               }
             }
@@ -1436,8 +1466,8 @@ export class World {
 
     this.chunks.forEach((chunk) => {
       this.meshesToRemove.push({
-         mesh: chunk.mesh,
-         transparentMesh: chunk.transparentMesh
+        mesh: chunk.mesh,
+        transparentMesh: chunk.transparentMesh,
       });
       if (chunk.mesh) {
         this.scene.remove(chunk.mesh);

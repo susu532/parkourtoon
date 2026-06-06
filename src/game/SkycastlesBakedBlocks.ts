@@ -11,5 +11,5 @@ export const skycastlesBakedBlocks = new Map<string, number>([
   ["-3,65,171", 0],
   ["-1,64,192", 0],
   ["0,64,170", 0],
-  ["1,64,170", 0]
+  ["1,64,170", 0],
 ]);

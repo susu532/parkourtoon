@@ -1,6 +1,6 @@
-import React from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Rocket, Wind } from 'lucide-react';
+import React from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { Rocket, Wind } from "lucide-react";
 
 interface LaunchMenuUIProps {
   isOpen: boolean;
@@ -8,11 +8,16 @@ interface LaunchMenuUIProps {
   onLaunch: () => void;
 }
 
-export const LaunchMenuUI: React.FC<LaunchMenuUIProps> = ({ isOpen, onClose, onLaunch }) => {
+export const LaunchMenuUI: React.FC<LaunchMenuUIProps> = ({
+  isOpen,
+  onClose,
+  onLaunch,
+}) => {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 pointer-events-auto"
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-6 pointer-events-auto"
           onPointerDown={(e) => {
             e.stopPropagation();
             if (e.target === e.currentTarget) onClose();
@@ -24,12 +29,12 @@ export const LaunchMenuUI: React.FC<LaunchMenuUIProps> = ({ isOpen, onClose, onL
             exit={{ opacity: 0 }}
             className="absolute inset-0 bg-black/60 pointer-events-none"
           />
-          
+
           <motion.div
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+            transition={{ type: "spring", damping: 20, stiffness: 300 }}
             className="relative w-full max-w-sm bg-gradient-to-b from-[#1e1e24] to-[#141418] border border-purple-500/30 rounded-3xl shadow-2xl p-8 flex flex-col items-center text-center overflow-hidden"
             onPointerDown={(e) => e.stopPropagation()}
           >
@@ -42,9 +47,9 @@ export const LaunchMenuUI: React.FC<LaunchMenuUIProps> = ({ isOpen, onClose, onL
             </div>
 
             <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">
-               Bren
+              Bren
             </h2>
-            
+
             <p className="text-gray-300 mb-8 leading-relaxed font-medium">
               Hey there! Want me to launch you into the sky with your Elytra?
             </p>
@@ -58,7 +63,7 @@ export const LaunchMenuUI: React.FC<LaunchMenuUIProps> = ({ isOpen, onClose, onL
                 <Rocket className="w-5 h-5 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" />
                 <span className="text-lg">Launch Me!</span>
               </button>
-              
+
               <button
                 onClick={onClose}
                 className="w-full bg-white/5 hover:bg-white/10 text-white/80 hover:text-white font-semibold py-4 px-6 rounded-xl transition-colors border border-white/5 hover:border-white/20"

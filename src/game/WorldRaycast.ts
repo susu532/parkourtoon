@@ -42,9 +42,9 @@ export class WorldRaycast {
     let hit = false;
     while (t < maxDistance) {
       const block = this.world.getBlock(x, y, z);
-      const isHit = solidOnly 
-        ? (block !== BLOCK.AIR && isSolidBlock(block))
-        : (block !== BLOCK.AIR && !isWater(block));
+      const isHit = solidOnly
+        ? block !== BLOCK.AIR && isSolidBlock(block)
+        : block !== BLOCK.AIR && !isWater(block);
 
       if (isHit) {
         hit = true;
@@ -87,7 +87,7 @@ export class WorldRaycast {
         prevPos: new THREE.Vector3(prevX, prevY, prevZ),
         blockType: this.world.getBlock(x, y, z),
         distance: t,
-        hitPoint: hitPoint
+        hitPoint: hitPoint,
       };
     }
 

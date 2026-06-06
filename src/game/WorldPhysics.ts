@@ -4,7 +4,7 @@ import { audioManager } from "./AudioManager";
 
 export class WorldPhysics {
   world: World;
-  
+
   constructor(world: World) {
     this.world = world;
   }

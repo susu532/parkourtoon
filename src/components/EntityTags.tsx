@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from 'react';
-import { Game } from '../game/Game';
-import { MobType } from '../game/Mob';
+import React, { useEffect, useRef } from "react";
+import { Game } from "../game/Game";
+import { MobType } from "../game/Mob";
 
 interface MobTagProps {
   game: Game | null;
@@ -16,7 +16,7 @@ export const EntityTags: React.FC<MobTagProps> = ({ game }) => {
     const updateTags = () => {
       const entityTags = game.getEntityTags();
       const container = containerRef.current;
-      
+
       if (container) {
         // Keep track of which IDs we've seen this frame
         const currentIds = new Set<string>();
@@ -24,89 +24,99 @@ export const EntityTags: React.FC<MobTagProps> = ({ game }) => {
         for (let i = 0; i < entityTags.length; i++) {
           const tag = entityTags[i];
           currentIds.add(tag.id);
-          
+
           let el = document.getElementById(`entity-tag-${tag.id}`);
-          
+
           // Create element if it doesn't exist
           if (!el) {
-            el = document.createElement('div');
+            el = document.createElement("div");
             el.id = `entity-tag-${tag.id}`;
-            el.className = "absolute flex flex-col items-center justify-center transform origin-bottom gap-0.5 md:gap-1";
+            el.className =
+              "absolute flex flex-col items-center justify-center transform origin-bottom gap-0.5 md:gap-1";
             el.style.top = "0";
             el.style.left = "0";
-            
-            const innerDiv = document.createElement('div');
-            const isPlayer = tag.type === 'Player';
-            innerDiv.className = `px-0.5 py-0 md:px-3 md:py-1 rounded border flex items-center gap-0.5 md:gap-2 whitespace-nowrap mc-font text-[5px] md:text-[16px] shadow-lg ${isPlayer ? 'bg-black/40 border-white/10' : 'bg-black/70 border-white/20'}`;
-            
-            if (!tag.isPassive && !isPlayer && tag.type !== 'Morvane') {
-              const lvSpan = document.createElement('span');
-              lvSpan.className = "text-[#FFFF55] font-bold text-[5px] md:text-[18px]";
+
+            const innerDiv = document.createElement("div");
+            const isPlayer = tag.type === "Player";
+            innerDiv.className = `px-0.5 py-0 md:px-3 md:py-1 rounded border flex items-center gap-0.5 md:gap-2 whitespace-nowrap mc-font text-[5px] md:text-[16px] shadow-lg ${isPlayer ? "bg-black/40 border-white/10" : "bg-black/70 border-white/20"}`;
+
+            if (!tag.isPassive && !isPlayer && tag.type !== "Morvane") {
+              const lvSpan = document.createElement("span");
+              lvSpan.className =
+                "text-[#FFFF55] font-bold text-[5px] md:text-[18px]";
               lvSpan.innerText = `Lv${tag.level}`;
               innerDiv.appendChild(lvSpan);
             }
             if (isPlayer && tag.team) {
-              const teamSpan = document.createElement('span');
-              teamSpan.className = tag.team === 'red' ? "text-[#FF5555] font-bold" : "text-[#5555FF] font-bold";
+              const teamSpan = document.createElement("span");
+              teamSpan.className =
+                tag.team === "red"
+                  ? "text-[#FF5555] font-bold"
+                  : "text-[#5555FF] font-bold";
               teamSpan.innerText = `[${tag.team.toUpperCase()}]`;
               innerDiv.appendChild(teamSpan);
             }
-            
-            const nameSpan = document.createElement('span');
+
+            const nameSpan = document.createElement("span");
             let nameColor = "text-white";
             if (isPlayer && tag.team) {
-              if (tag.team === 'red') nameColor = "text-[#FF5555]";
-              else if (tag.team === 'blue') nameColor = "text-[#5555FF]";
+              if (tag.team === "red") nameColor = "text-[#FF5555]";
+              else if (tag.team === "blue") nameColor = "text-[#5555FF]";
             }
-            if (tag.type === 'SpecialText') {
-              nameSpan.className = "text-[#FFCC00] font-bold text-center font-mono";
+            if (tag.type === "SpecialText") {
+              nameSpan.className =
+                "text-[#FFCC00] font-bold text-center font-mono";
             } else {
               nameSpan.className = `${nameColor} font-medium`;
             }
             nameSpan.id = `entity-name-${tag.id}`;
-            nameSpan.innerText = (isPlayer || tag.type === 'SpecialText') ? (tag.name || 'Player') : tag.type;
+            nameSpan.innerText =
+              isPlayer || tag.type === "SpecialText"
+                ? tag.name || "Player"
+                : tag.type;
             innerDiv.appendChild(nameSpan);
-            
-            if (!isPlayer && tag.type !== 'SpecialText') {
-              const hpSpan = document.createElement('span');
-              hpSpan.className = `font-bold ${tag.isPassive ? 'text-[#55FF55]' : 'text-[#FF5555]'}`;
+
+            if (!isPlayer && tag.type !== "SpecialText") {
+              const hpSpan = document.createElement("span");
+              hpSpan.className = `font-bold ${tag.isPassive ? "text-[#55FF55]" : "text-[#FF5555]"}`;
               hpSpan.id = `entity-hp-${tag.id}`;
               hpSpan.innerText = `${Math.ceil(tag.health)}❤`;
               innerDiv.appendChild(hpSpan);
             }
-            
+
             el.appendChild(innerDiv);
-            
-            const emojiDiv = document.createElement('div');
+
+            const emojiDiv = document.createElement("div");
             emojiDiv.id = `entity-emoji-${tag.id}`;
-            emojiDiv.className = "absolute top-full left-1/2 text-6xl md:text-8xl mc-text-shadow transition-all duration-300 pointer-events-none select-none font-sans overflow-visible leading-none text-center flex items-center justify-center";
-            emojiDiv.style.transform = 'translateX(-50%) scale(1)';
+            emojiDiv.className =
+              "absolute top-full left-1/2 text-6xl md:text-8xl mc-text-shadow transition-all duration-300 pointer-events-none select-none font-sans overflow-visible leading-none text-center flex items-center justify-center";
+            emojiDiv.style.transform = "translateX(-50%) scale(1)";
             if (tag.emoji) {
-                emojiDiv.innerText = tag.emoji;
-                emojiDiv.style.opacity = '1';
-                emojiDiv.style.height = 'auto';
-                emojiDiv.style.marginTop = '8px';
+              emojiDiv.innerText = tag.emoji;
+              emojiDiv.style.opacity = "1";
+              emojiDiv.style.height = "auto";
+              emojiDiv.style.marginTop = "8px";
             } else {
-                emojiDiv.style.opacity = '0';
-                emojiDiv.style.height = '0px';
-                emojiDiv.style.marginTop = '0px';
-                emojiDiv.innerText = '';
+              emojiDiv.style.opacity = "0";
+              emojiDiv.style.height = "0px";
+              emojiDiv.style.marginTop = "0px";
+              emojiDiv.innerText = "";
             }
             el.appendChild(emojiDiv);
 
             container.appendChild(el);
           } else {
             // Update health or special text name if it changed
-            const isPlayer = tag.type === 'Player';
-            if (tag.type === 'SpecialText') {
+            const isPlayer = tag.type === "Player";
+            if (tag.type === "SpecialText") {
               const nameSpan = document.getElementById(`entity-name-${tag.id}`);
               if (nameSpan && nameSpan.innerText !== tag.name) {
                 nameSpan.innerText = tag.name;
               }
             } else if (isPlayer) {
               const nameSpan = document.getElementById(`entity-name-${tag.id}`);
-              if (nameSpan && nameSpan.innerText !== (tag.name || 'Player')) {
-                nameSpan.innerText = tag.name || 'Player';
+              if (nameSpan && nameSpan.innerText !== (tag.name || "Player")) {
+                nameSpan.innerText = tag.name || "Player";
               }
             } else if (!isPlayer) {
               const hpSpan = document.getElementById(`entity-hp-${tag.id}`);
@@ -117,31 +127,32 @@ export const EntityTags: React.FC<MobTagProps> = ({ game }) => {
                 }
               }
             }
-            
+
             const emojiDiv = document.getElementById(`entity-emoji-${tag.id}`);
             if (emojiDiv) {
-                if (tag.emoji) {
-                    emojiDiv.style.height = 'auto';
-                    emojiDiv.style.marginTop = '8px';
-                    if (emojiDiv.innerText !== tag.emoji) {
-                        emojiDiv.innerText = tag.emoji;
-                        // Trigger a small pop animation
-                        emojiDiv.style.transform = `translateX(-50%) scale(1.2)`;
-                        setTimeout(() => {
-                           if (emojiDiv) emojiDiv.style.transform = `translateX(-50%) scale(1)`;
-                        }, 150);
-                    }
-                    emojiDiv.style.opacity = '1';
-                } else {
-                    emojiDiv.style.opacity = '0';
-                    emojiDiv.style.height = '0px';
-                    emojiDiv.style.marginTop = '0px';
-                    setTimeout(() => {
-                        if (emojiDiv && emojiDiv.style.opacity === '0') {
-                            emojiDiv.innerText = '';
-                        }
-                    }, 300);
+              if (tag.emoji) {
+                emojiDiv.style.height = "auto";
+                emojiDiv.style.marginTop = "8px";
+                if (emojiDiv.innerText !== tag.emoji) {
+                  emojiDiv.innerText = tag.emoji;
+                  // Trigger a small pop animation
+                  emojiDiv.style.transform = `translateX(-50%) scale(1.2)`;
+                  setTimeout(() => {
+                    if (emojiDiv)
+                      emojiDiv.style.transform = `translateX(-50%) scale(1)`;
+                  }, 150);
                 }
+                emojiDiv.style.opacity = "1";
+              } else {
+                emojiDiv.style.opacity = "0";
+                emojiDiv.style.height = "0px";
+                emojiDiv.style.marginTop = "0px";
+                setTimeout(() => {
+                  if (emojiDiv && emojiDiv.style.opacity === "0") {
+                    emojiDiv.innerText = "";
+                  }
+                }, 300);
+              }
             }
           }
 
@@ -152,14 +163,14 @@ export const EntityTags: React.FC<MobTagProps> = ({ game }) => {
           const top = isFinite(tag.y) ? tag.y : -1000;
 
           // Use transform translate3d instead of left/top to avoid layout thrashing
-          el.style.opacity = isFinite(opacity) ? opacity.toString() : '0';
+          el.style.opacity = isFinite(opacity) ? opacity.toString() : "0";
           el.style.transform = `translate3d(calc(${left}px - 50%), calc(${top}px - 100%), 0) scale(${isFinite(scale) ? scale : 0})`;
         }
 
         // Remove elements that are no longer in entityTags
         Array.from(container.children).forEach((child) => {
           const el = child as HTMLElement;
-          const id = el.id.replace('entity-tag-', '');
+          const id = el.id.replace("entity-tag-", "");
           if (!currentIds.has(id)) {
             el.remove();
           }
@@ -177,6 +188,9 @@ export const EntityTags: React.FC<MobTagProps> = ({ game }) => {
   if (!game) return null;
 
   return (
-    <div ref={containerRef} className="absolute inset-0 pointer-events-none overflow-hidden" />
+    <div
+      ref={containerRef}
+      className="absolute inset-0 pointer-events-none overflow-hidden"
+    />
   );
 };

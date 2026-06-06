@@ -1,4 +1,4 @@
-import { getMiningStats } from './MiningStats';
+import { getMiningStats } from "./MiningStats";
 import * as THREE from "three";
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
 import { World } from "./World";
@@ -51,8 +51,12 @@ export class Player {
   inventory = new Inventory(37);
   chestInventories = new Map<string, Inventory>();
   _chestInventory = new Inventory(27);
-  get chestInventory() { return this._chestInventory; }
-  set chestInventory(inv: Inventory) { this._chestInventory = inv; }
+  get chestInventory() {
+    return this._chestInventory;
+  }
+  set chestInventory(inv: Inventory) {
+    this._chestInventory = inv;
+  }
   private _hotbarIndex = 0;
   get hotbarIndex() {
     return this._hotbarIndex;
@@ -272,7 +276,10 @@ export class Player {
     );
     window.addEventListener("networkPlayerDied", this.onNetworkPlayerDied);
     window.addEventListener("becomeSpectator", this.onBecomeSpectator);
-    window.addEventListener("networkShootArrow", this.onNetworkShootArrow as EventListener);
+    window.addEventListener(
+      "networkShootArrow",
+      this.onNetworkShootArrow as EventListener,
+    );
     window.addEventListener(
       "itemAcquired",
       this.onItemAcquired as EventListener,
@@ -284,28 +291,32 @@ export class Player {
   };
 
   onNetworkShootArrow = (e: any) => {
-     const data = e.detail;
-     const isLocal = data.shooter === networkManager.id;
-     let startPos = new THREE.Vector3(data.position.x, data.position.y, data.position.z);
-     
-     if (isLocal) {
-       if (this.perspective !== 0 && this.renderer.heldItemModel) {
-         this.renderer.heldItemModel.getWorldPosition(startPos);
-       }
-     } else {
-       const remotePlayer = this.entityManager.remotePlayers.get(data.shooter);
-       if (remotePlayer && remotePlayer.heldItemModel) {
-         remotePlayer.heldItemModel.getWorldPosition(startPos);
-       }
-     }
+    const data = e.detail;
+    const isLocal = data.shooter === networkManager.id;
+    let startPos = new THREE.Vector3(
+      data.position.x,
+      data.position.y,
+      data.position.z,
+    );
 
-     this.entityManager.shootArrow(
-       data.shooter || "",
-       startPos,
-       new THREE.Vector3(data.velocity.x, data.velocity.y, data.velocity.z),
-       data.power,
-       isLocal
-     );
+    if (isLocal) {
+      if (this.perspective !== 0 && this.renderer.heldItemModel) {
+        this.renderer.heldItemModel.getWorldPosition(startPos);
+      }
+    } else {
+      const remotePlayer = this.entityManager.remotePlayers.get(data.shooter);
+      if (remotePlayer && remotePlayer.heldItemModel) {
+        remotePlayer.heldItemModel.getWorldPosition(startPos);
+      }
+    }
+
+    this.entityManager.shootArrow(
+      data.shooter || "",
+      startPos,
+      new THREE.Vector3(data.velocity.x, data.velocity.y, data.velocity.z),
+      data.power,
+      isLocal,
+    );
   };
 
   onNetworkPlayerDied = (e: any) => {
@@ -382,11 +393,14 @@ export class Player {
       skyBridgeManager.stats.health = skyBridgeManager.effectiveStats.maxHealth;
       this.health = skyBridgeManager.stats.health;
 
-      if (useGameStore.getState().currentMode.startsWith('battleroyale') && e.detail.position.y >= 50) {
+      if (
+        useGameStore.getState().currentMode.startsWith("battleroyale") &&
+        e.detail.position.y >= 50
+      ) {
         this.isGliding = true;
       }
 
-      const modeWithoutNum = useGameStore.getState().currentMode.split('_')[0];
+      const modeWithoutNum = useGameStore.getState().currentMode.split("_")[0];
       let itemsAdded = false;
 
       const getInventoryCount = (type: ItemType) => {
@@ -397,8 +411,15 @@ export class Player {
         return cnt;
       };
 
-      if (modeWithoutNum === 'skycastles') {
-        if (getInventoryCount(ItemType.WOODEN_SWORD) === 0 && getInventoryCount(ItemType.BOW) === 0 && getInventoryCount(ItemType.IRON_SWORD) === 0 && getInventoryCount(ItemType.DIAMOND_SWORD) === 0 && getInventoryCount(ItemType.GOLDEN_SWORD) === 0 && getInventoryCount(ItemType.STONE_SWORD) === 0) {
+      if (modeWithoutNum === "skycastles") {
+        if (
+          getInventoryCount(ItemType.WOODEN_SWORD) === 0 &&
+          getInventoryCount(ItemType.BOW) === 0 &&
+          getInventoryCount(ItemType.IRON_SWORD) === 0 &&
+          getInventoryCount(ItemType.DIAMOND_SWORD) === 0 &&
+          getInventoryCount(ItemType.GOLDEN_SWORD) === 0 &&
+          getInventoryCount(ItemType.STONE_SWORD) === 0
+        ) {
           this.inventory.addItem(ItemType.WOODEN_SWORD, 1);
           itemsAdded = true;
         }
@@ -411,21 +432,31 @@ export class Player {
           this.inventory.addItem(ItemType.PLANKS, 10 - planksCount);
           itemsAdded = true;
         }
-      } else if (modeWithoutNum === 'dungeondelver') {
+      } else if (modeWithoutNum === "dungeondelver") {
         if (getInventoryCount(ItemType.WOODEN_SWORD) === 0) {
           this.inventory.addItem(ItemType.WOODEN_SWORD, 1);
           itemsAdded = true;
         }
-        if (!this.inventory.slots[Inventory.OFF_HAND_SLOT] || this.inventory.slots[Inventory.OFF_HAND_SLOT]?.type !== ItemType.TORCH) {
-           this.inventory.slots[Inventory.OFF_HAND_SLOT] = { type: ItemType.TORCH, count: 1 };
-           itemsAdded = true;
+        if (
+          !this.inventory.slots[Inventory.OFF_HAND_SLOT] ||
+          this.inventory.slots[Inventory.OFF_HAND_SLOT]?.type !== ItemType.TORCH
+        ) {
+          this.inventory.slots[Inventory.OFF_HAND_SLOT] = {
+            type: ItemType.TORCH,
+            count: 1,
+          };
+          itemsAdded = true;
         }
-      } else if (modeWithoutNum === 'summerlab') {
-        if (getInventoryCount(ItemType.FLUID_CHOCOLATE_HOSE) === 0 && getInventoryCount(ItemType.BOW) === 0) {
+      } else if (modeWithoutNum === "summerlab") {
+        if (
+          !wasDead &&
+          getInventoryCount(ItemType.FLUID_CHOCOLATE_HOSE) === 0 &&
+          getInventoryCount(ItemType.BOW) === 0
+        ) {
           window.dispatchEvent(new CustomEvent("triggerChooseRole"));
         }
       }
-      
+
       if (itemsAdded) {
         useGameStore.getState().incrementInventoryVersion();
       }
@@ -441,7 +472,10 @@ export class Player {
     this.inputController.destroy();
     window.removeEventListener("syncHealth", this.onSyncHealth);
     window.removeEventListener("networkPlayerHit", this.onNetworkPlayerHit);
-    window.removeEventListener("networkShootArrow", this.onNetworkShootArrow as EventListener);
+    window.removeEventListener(
+      "networkShootArrow",
+      this.onNetworkShootArrow as EventListener,
+    );
     window.removeEventListener(
       "networkPlayerRespawn",
       this.onNetworkPlayerRespawn,
@@ -490,16 +524,16 @@ export class Player {
     this.inventory.clear();
     this.chestInventories.clear();
     this.chestInventory = new Inventory(27);
-    
+
     // Core starter gear for Delver
     this.inventory.addItem(ItemType.WOODEN_SWORD, 1);
-    
+
     // The requested Off-hand Torch (exactly 1)
     this.inventory.slots[Inventory.OFF_HAND_SLOT] = {
       type: ItemType.TORCH,
-      count: 1
+      count: 1,
     };
-    
+
     this.hotbarIndex = 0;
     useGameStore.getState().incrementInventoryVersion();
   }
@@ -593,7 +627,8 @@ export class Player {
 
   public performBlockBreak(pos: THREE.Vector3, blockType: number) {
     const serverName =
-      new URLSearchParams(window.location.search).get("server") || "dungeondelver";
+      new URLSearchParams(window.location.search).get("server") ||
+      "dungeondelver";
     const isSkyCastles = serverName.startsWith("skycastles");
 
     // Prevent breaking the chest
@@ -735,7 +770,8 @@ export class Player {
 
       // Damage tool (except in skycastles mode)
       const serverName =
-        new URLSearchParams(window.location.search).get("server") || "dungeondelver";
+        new URLSearchParams(window.location.search).get("server") ||
+        "dungeondelver";
       const isSkyCastles = serverName.startsWith("skycastles");
       const equippedItem = this.inventory.slots[this.hotbarIndex];
       if (
@@ -780,9 +816,6 @@ export class Player {
   updateSkin(skinSeed: string) {
     this.renderer.updateSkin(skinSeed);
   }
-
-
-
 
   update(delta: number) {
     updatePlayer(this, delta);

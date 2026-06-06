@@ -145,7 +145,7 @@
   // ===== 10. DOMAIN LOCK =====
   var _allowedHosts = [
     'summerlab.vercel.app',
-    'summerlab-server.onrender.com',
+    'parkourtoon-server.onrender.com',
     'crazygames.com',
     '1001juegos.com',
     'speelspelletjes.nl',

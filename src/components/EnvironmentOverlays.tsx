@@ -1,8 +1,8 @@
-import { useGameStore } from '../store/gameStore';
+import { useGameStore } from "../store/gameStore";
 
 export function EnvironmentOverlays() {
-  const isUnderwater = useGameStore(state => state.isUnderwater);
-  const isUnderLava = useGameStore(state => state.isUnderLava);
+  const isUnderwater = useGameStore((state) => state.isUnderwater);
+  const isUnderLava = useGameStore((state) => state.isUnderLava);
 
   return (
     <>

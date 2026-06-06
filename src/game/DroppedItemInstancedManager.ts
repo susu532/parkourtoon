@@ -1,24 +1,36 @@
-import * as THREE from 'three';
-import { ItemType } from './Inventory';
-import { ATLAS_TILES, getBlockUVs, isSolidBlock, isPlant, isFlatItem } from './TextureAtlas';
-import { World } from './World';
-import { settingsManager } from './Settings';
+import * as THREE from "three";
+import { ItemType } from "./Inventory";
+import {
+  ATLAS_TILES,
+  getBlockUVs,
+  isSolidBlock,
+  isPlant,
+  isFlatItem,
+} from "./TextureAtlas";
+import { World } from "./World";
+import { settingsManager } from "./Settings";
 
-function mergeBufferGeometries(geometries: THREE.BufferGeometry[]): THREE.BufferGeometry {
+function mergeBufferGeometries(
+  geometries: THREE.BufferGeometry[],
+): THREE.BufferGeometry {
   const mergedPosition: number[] = [];
   const mergedNormal: number[] = [];
   const mergedUv: number[] = [];
-  
+
   for (const geom of geometries) {
     const posAttr = geom.attributes.position;
     const normAttr = geom.attributes.normal;
     const uvAttr = geom.attributes.uv;
-    
+
     if (posAttr) {
       for (let i = 0; i < posAttr.count; i++) {
         mergedPosition.push(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i));
         if (normAttr) {
-          mergedNormal.push(normAttr.getX(i), normAttr.getY(i), normAttr.getZ(i));
+          mergedNormal.push(
+            normAttr.getX(i),
+            normAttr.getY(i),
+            normAttr.getZ(i),
+          );
         } else {
           mergedNormal.push(0, 1, 0);
         }
@@ -30,11 +42,17 @@ function mergeBufferGeometries(geometries: THREE.BufferGeometry[]): THREE.Buffer
       }
     }
   }
-  
+
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(mergedPosition, 3));
-  geometry.setAttribute('normal', new THREE.Float32BufferAttribute(mergedNormal, 3));
-  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(mergedUv, 2));
+  geometry.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(mergedPosition, 3),
+  );
+  geometry.setAttribute(
+    "normal",
+    new THREE.Float32BufferAttribute(mergedNormal, 3),
+  );
+  geometry.setAttribute("uv", new THREE.Float32BufferAttribute(mergedUv, 2));
   return geometry;
 }
 
@@ -56,9 +74,9 @@ export class DroppedItemInstancedManager {
   scene: THREE.Scene;
   world: World;
   textureAtlas: THREE.Texture;
-  
+
   items: Map<string, DroppedItemData> = new Map();
-  
+
   // Per-type instanced meshes
   instancedMeshes: Map<ItemType, THREE.InstancedMesh> = new Map();
   itemCounts: Map<ItemType, number> = new Map();
@@ -80,7 +98,7 @@ export class DroppedItemInstancedManager {
     const pooled = this._dropPool.pop();
     if (pooled) return pooled;
     return {
-      id: '',
+      id: "",
       type: ItemType.AIR,
       position: new THREE.Vector3(),
       rotation: new THREE.Euler(),
@@ -90,7 +108,7 @@ export class DroppedItemInstancedManager {
       velocity: new THREE.Vector3(),
       isGrounded: false,
       groundY: 0,
-      baseY: 0
+      baseY: 0,
     };
   }
 
@@ -100,27 +118,58 @@ export class DroppedItemInstancedManager {
     }
   }
 
-  addDroppedItem(id: string, type: ItemType, position: THREE.Vector3, initialVelocity?: THREE.Vector3) {
+  addDroppedItem(
+    id: string,
+    type: ItemType,
+    position: THREE.Vector3,
+    initialVelocity?: THREE.Vector3,
+  ) {
     if (this.items.has(id)) return;
 
     if (!this.instancedMeshes.has(type)) {
       let geometry;
-      const isHose = type === ItemType.FLUID_CHOCOLATE_HOSE || type === ItemType.WASHING_HOSE;
+      const isHose =
+        type === ItemType.FLUID_CHOCOLATE_HOSE ||
+        type === ItemType.WASHING_HOSE;
 
       if (isHose) {
         // Build a detailed compound geometry for the dropped hose:
-        const bodyGeo = new THREE.CylinderGeometry(0.032, 0.032, 0.22, 8).toNonIndexed();
-        
-        const nozzleGeo = new THREE.CylinderGeometry(0.045, 0.034, 0.05, 8).toNonIndexed();
+        const bodyGeo = new THREE.CylinderGeometry(
+          0.032,
+          0.032,
+          0.22,
+          8,
+        ).toNonIndexed();
+
+        const nozzleGeo = new THREE.CylinderGeometry(
+          0.045,
+          0.034,
+          0.05,
+          8,
+        ).toNonIndexed();
         nozzleGeo.translate(0, 0.11, 0);
-        
-        const backRingGeo = new THREE.CylinderGeometry(0.048, 0.048, 0.05, 8).toNonIndexed();
+
+        const backRingGeo = new THREE.CylinderGeometry(
+          0.048,
+          0.048,
+          0.05,
+          8,
+        ).toNonIndexed();
         backRingGeo.translate(0, -0.11, 0);
-        
-        const handleGripGeo = new THREE.BoxGeometry(0.024, 0.09, 0.024).toNonIndexed();
+
+        const handleGripGeo = new THREE.BoxGeometry(
+          0.024,
+          0.09,
+          0.024,
+        ).toNonIndexed();
         handleGripGeo.translate(0, -0.05, 0.05).rotateX(-Math.PI / 8);
 
-        geometry = mergeBufferGeometries([bodyGeo, nozzleGeo, backRingGeo, handleGripGeo]);
+        geometry = mergeBufferGeometries([
+          bodyGeo,
+          nozzleGeo,
+          backRingGeo,
+          handleGripGeo,
+        ]);
         geometry.rotateX(Math.PI / 2); // Lay it flat
       } else if (isFlatItem(type as unknown as number)) {
         geometry = new THREE.BoxGeometry(0.3, 0.3, 0.05); // Thin item
@@ -153,37 +202,47 @@ export class DroppedItemInstancedManager {
         uvAttribute.needsUpdate = true;
       }
 
-      const isAlphaFlat = isFlatItem(type as unknown as number) || isPlant(type as unknown as number);
+      const isAlphaFlat =
+        isFlatItem(type as unknown as number) ||
+        isPlant(type as unknown as number);
       const isGlass = type === ItemType.GLASS;
       const isWaterTypes = type >= ItemType.WATER && type <= ItemType.WATER_7;
 
       const isPerformance = settingsManager.getSettings().performanceMode;
-      
+
       let material;
       if (isHose) {
-        const hoseColor = type === ItemType.WASHING_HOSE ? 0x3889f0 : 0xFF5500;
-        material = isPerformance ?
-          new THREE.MeshBasicMaterial({ color: hoseColor }) :
-          new THREE.MeshStandardMaterial({ color: hoseColor, roughness: 0.4, metalness: 0.1 });
+        const hoseColor = type === ItemType.WASHING_HOSE ? 0x3889f0 : 0xff5500;
+        material = isPerformance
+          ? new THREE.MeshBasicMaterial({ color: hoseColor })
+          : new THREE.MeshStandardMaterial({
+              color: hoseColor,
+              roughness: 0.4,
+              metalness: 0.1,
+            });
       } else {
-        material = isPerformance ?
-          new THREE.MeshBasicMaterial({ 
-            map: this.textureAtlas,
-            transparent: isGlass || isWaterTypes || isAlphaFlat,
-            opacity: isWaterTypes ? 0.6 : 1.0,
-            alphaTest: (isGlass || isAlphaFlat) ? 0.5 : 0
-          }) :
-          new THREE.MeshStandardMaterial({ 
-            map: this.textureAtlas,
-            transparent: isGlass || isWaterTypes || isAlphaFlat,
-            opacity: isWaterTypes ? 0.6 : 1.0,
-            alphaTest: (isGlass || isAlphaFlat) ? 0.5 : 0,
-            roughness: 0.8,
-            metalness: 0.1
-          });
+        material = isPerformance
+          ? new THREE.MeshBasicMaterial({
+              map: this.textureAtlas,
+              transparent: isGlass || isWaterTypes || isAlphaFlat,
+              opacity: isWaterTypes ? 0.6 : 1.0,
+              alphaTest: isGlass || isAlphaFlat ? 0.5 : 0,
+            })
+          : new THREE.MeshStandardMaterial({
+              map: this.textureAtlas,
+              transparent: isGlass || isWaterTypes || isAlphaFlat,
+              opacity: isWaterTypes ? 0.6 : 1.0,
+              alphaTest: isGlass || isAlphaFlat ? 0.5 : 0,
+              roughness: 0.8,
+              metalness: 0.1,
+            });
       }
 
-      const mesh = new THREE.InstancedMesh(geometry, material, this.MAX_INSTANCES);
+      const mesh = new THREE.InstancedMesh(
+        geometry,
+        material,
+        this.MAX_INSTANCES,
+      );
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       mesh.castShadow = !isPerformance;
       mesh.receiveShadow = !isPerformance;
@@ -194,7 +253,11 @@ export class DroppedItemInstancedManager {
 
     let groundY = -64;
     for (let y = Math.floor(position.y); y > -64; y--) {
-      const block = this.world.getBlock(Math.floor(position.x), y, Math.floor(position.z));
+      const block = this.world.getBlock(
+        Math.floor(position.x),
+        y,
+        Math.floor(position.z),
+      );
       if (isSolidBlock(block)) {
         groundY = y + 1.15;
         break;
@@ -209,17 +272,17 @@ export class DroppedItemInstancedManager {
     data.scale.set(1, 1, 1);
     data.createdAt = Date.now();
     data.pickupDelay = 2000;
-    
+
     if (initialVelocity) {
       data.velocity.copy(initialVelocity);
     } else {
       data.velocity.set(
         (Math.random() - 0.5) * 1.5,
         2 + Math.random() * 2,
-        (Math.random() - 0.5) * 1.5
+        (Math.random() - 0.5) * 1.5,
       );
     }
-    
+
     data.isGrounded = false;
     data.groundY = groundY;
     data.baseY = position.y;
@@ -238,7 +301,7 @@ export class DroppedItemInstancedManager {
   update(playerPos: THREE.Vector3, delta: number, isPerformanceMode: boolean) {
     const time = Date.now() * 0.002;
     const gravity = 15;
-    
+
     // Reset counters
     this.instancedMeshes.forEach((mesh, type) => {
       this.itemCounts.set(type, 0);
@@ -247,12 +310,15 @@ export class DroppedItemInstancedManager {
     for (const item of this.items.values()) {
       const distToPlayer = item.position.distanceTo(playerPos);
       const magnetRange = 4.0;
-      
+
       if (distToPlayer < magnetRange) {
         item.isGrounded = false;
         this._pullDirection.subVectors(playerPos, item.position).normalize();
         const pullStrength = (1.0 - distToPlayer / magnetRange) * 10;
-        item.velocity.addScaledVector(this._pullDirection, pullStrength * delta);
+        item.velocity.addScaledVector(
+          this._pullDirection,
+          pullStrength * delta,
+        );
         item.velocity.y += 2 * delta;
         if (item.velocity.lengthSq() > 400) {
           item.velocity.setLength(20);
@@ -264,11 +330,11 @@ export class DroppedItemInstancedManager {
         item.velocity.x *= 0.95;
         item.velocity.z *= 0.95;
         if (distToPlayer < 7.0) {
-           item.velocity.y *= 0.95;
+          item.velocity.y *= 0.95;
         }
 
         item.position.addScaledVector(item.velocity, delta);
-        
+
         if (item.position.y <= item.groundY) {
           if (Math.abs(item.velocity.y) > 2 && !isPerformanceMode) {
             item.velocity.y *= -0.5;
@@ -279,7 +345,7 @@ export class DroppedItemInstancedManager {
             item.baseY = item.position.y;
           }
         }
-        
+
         if (!isPerformanceMode) {
           item.rotation.x += delta * 5;
           item.rotation.z += delta * 3;
@@ -293,12 +359,20 @@ export class DroppedItemInstancedManager {
         item.position.y = item.baseY;
 
         if (Math.floor(time * 2) % 10 === 0) {
-          const blockBelow = this.world.getBlock(Math.floor(item.position.x), Math.floor(item.position.y - 0.2), Math.floor(item.position.z));
+          const blockBelow = this.world.getBlock(
+            Math.floor(item.position.x),
+            Math.floor(item.position.y - 0.2),
+            Math.floor(item.position.z),
+          );
           if (!isSolidBlock(blockBelow)) {
             item.isGrounded = false;
             let newGroundY = -64;
             for (let y = Math.floor(item.position.y - 0.2); y > -64; y--) {
-              const block = this.world.getBlock(Math.floor(item.position.x), y, Math.floor(item.position.z));
+              const block = this.world.getBlock(
+                Math.floor(item.position.x),
+                y,
+                Math.floor(item.position.z),
+              );
               if (isSolidBlock(block)) {
                 newGroundY = y + 1.15;
                 break;
@@ -314,13 +388,17 @@ export class DroppedItemInstancedManager {
       if (count < this.MAX_INSTANCES) {
         const mesh = this.instancedMeshes.get(item.type)!;
         this.dummyQuaternion.setFromEuler(item.rotation);
-        
+
         this.renderPos.copy(item.position);
         if (item.isGrounded && !isPerformanceMode) {
           this.renderPos.y += Math.sin(time * 2 + item.position.x) * 0.1;
         }
 
-        this.dummyMatrix.compose(this.renderPos, this.dummyQuaternion, item.scale);
+        this.dummyMatrix.compose(
+          this.renderPos,
+          this.dummyQuaternion,
+          item.scale,
+        );
         mesh.setMatrixAt(count, this.dummyMatrix);
         this.itemCounts.set(item.type, count + 1);
       }
@@ -336,18 +414,18 @@ export class DroppedItemInstancedManager {
   }
 
   setShadows(enabled: boolean) {
-    this.instancedMeshes.forEach(mesh => {
+    this.instancedMeshes.forEach((mesh) => {
       mesh.castShadow = enabled;
       mesh.receiveShadow = enabled;
     });
   }
 
   destroy() {
-    this.instancedMeshes.forEach(mesh => {
+    this.instancedMeshes.forEach((mesh) => {
       this.scene.remove(mesh);
       mesh.geometry.dispose();
       if (Array.isArray(mesh.material)) {
-        mesh.material.forEach(m => m.dispose());
+        mesh.material.forEach((m) => m.dispose());
       } else {
         mesh.material.dispose();
       }
