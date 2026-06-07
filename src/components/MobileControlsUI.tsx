@@ -98,7 +98,8 @@ export const MobileControlsUI: React.FC<{game?: any}> = ({ game }) => {
   const activeTaps = useRef<Map<number, { x: number, y: number, time: number, isSwipe: boolean, holdTimeout: any, isHolding: boolean }>>(new Map());
   const isButtonAttacking = useRef(false);
 
-  const [joystick, setJoystick] = useState({ x: 0, y: 0 });
+  const joystickThumbRef = useRef<HTMLDivElement>(null);
+  const [joystickState, setJoystickState] = useState({ isSprinting: false, isMovingForward: false });
   const joystickRef = useRef<HTMLDivElement>(null);
   const joystickPointerId = useRef<number | null>(null);
   const joystickOriginRef = useRef<{x: number, y: number} | null>(null);
@@ -214,7 +215,18 @@ export const MobileControlsUI: React.FC<{game?: any}> = ({ game }) => {
                     normalizedY = 0;
                 }
                 
-                setJoystick({ x: normalizedX, y: normalizedY });
+                if (joystickThumbRef.current) {
+                    joystickThumbRef.current.style.transform = `translate(${normalizedX * 125}%, ${normalizedY * 125}%)`;
+                }
+                
+                const isMovingForward = normalizedY < -0.5;
+                setJoystickState(prev => {
+                    if (prev.isSprinting !== isSprinting || prev.isMovingForward !== isMovingForward) {
+                        return { isSprinting, isMovingForward };
+                    }
+                    return prev;
+                });
+
                 window.mobileInputs.joystickX = normalizedX;
                 window.mobileInputs.joystickY = normalizedY;
                 window.mobileInputs.isSprinting = isSprinting;
@@ -266,7 +278,10 @@ export const MobileControlsUI: React.FC<{game?: any}> = ({ game }) => {
             joystickTouchId.current = null;
             joystickOriginRef.current = null;
             setJoystickOrigin(null);
-            setJoystick({ x: 0, y: 0 });
+            if (joystickThumbRef.current) {
+                joystickThumbRef.current.style.transform = `translate(0%, 0%)`;
+            }
+            setJoystickState({ isSprinting: false, isMovingForward: false });
             window.mobileInputs.joystickX = 0;
             window.mobileInputs.joystickY = 0;
             window.mobileInputs.isSprinting = false;
@@ -323,7 +338,10 @@ export const MobileControlsUI: React.FC<{game?: any}> = ({ game }) => {
       window.mobileInputs.isAttacking = false;
       window.mobileInputs.isZooming = false;
       
-      setJoystick({ x: 0, y: 0 });
+      if (joystickThumbRef.current) {
+          joystickThumbRef.current.style.transform = `translate(0%, 0%)`;
+      }
+      setJoystickState({ isSprinting: false, isMovingForward: false });
       joystickOriginRef.current = null;
       setJoystickOrigin(null);
       joystickPointerId.current = null;
@@ -495,16 +513,17 @@ export const MobileControlsUI: React.FC<{game?: any}> = ({ game }) => {
             style={{ left: joystickOrigin.x, top: joystickOrigin.y }}
           >
              <div 
-                className={`w-[45%] h-[45%] border-2 rounded-full shadow-lg pointer-events-none flex items-center justify-center transition-colors ${window.mobileInputs.isSprinting ? 'bg-white/60 border-white/80' : 'bg-white/40 border-white/60'}`}
+                ref={joystickThumbRef}
+                className={`w-[45%] h-[45%] border-2 rounded-full shadow-lg pointer-events-none flex items-center justify-center transition-colors ${joystickState.isSprinting ? 'bg-white/60 border-white/80' : 'bg-white/40 border-white/60'}`}
                 style={{ 
-                   transform: `translate(${joystick.x * 125}%, ${joystick.y * 125}%)`,
+                   transform: `translate(0%, 0%)`,
                    transition: joystickPointerId.current === null ? 'transform 0.15s ease-out' : 'none'
                 }}
              >
-               {window.mobileInputs.isSprinting ? (
+               {joystickState.isSprinting ? (
                  <ChevronsUp size={24} className="text-white drop-shadow-md opacity-100" />
                ) : (
-                 <Navigation size={20} className={`text-white drop-shadow-md ${joystick.y < -0.5 ? 'opacity-100' : 'opacity-0'} transition-opacity`} />
+                 <Navigation size={20} className={`text-white drop-shadow-md ${joystickState.isMovingForward ? 'opacity-100' : 'opacity-0'} transition-opacity`} />
                )}
              </div>
           </div>
