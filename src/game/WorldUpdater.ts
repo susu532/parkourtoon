@@ -186,8 +186,15 @@ export class WorldUpdater {
 
         const isPerformanceMode = settingsManager.getSettings().performanceMode;
 
-        const blocksCopy = chunk.blocks.slice();
-        const lightCopy = chunk.light.slice();
+        const verticalViewDistance = isMobileDevice ? 48 : 128; // Limit vertical view
+        const dataMinY = Math.max(0, Math.floor(playerPosition.y - WORLD_Y_OFFSET) - verticalViewDistance);
+        const dataMaxY = Math.min(CHUNK_HEIGHT - 1, Math.floor(playerPosition.y - WORLD_Y_OFFSET) + verticalViewDistance);
+
+        const startIndex = dataMinY * 256;
+        const endIndex = (dataMaxY + 1) * 256;
+
+        const blocksCopy = chunk.blocks.subarray(startIndex, endIndex).slice();
+        const lightCopy = chunk.light.subarray(startIndex, endIndex).slice();
         const neighborsBlocks: (Uint16Array | null)[] = [];
         const neighborsLight: (Uint8Array | null)[] = [];
         const transferList: ArrayBuffer[] = [
@@ -197,8 +204,8 @@ export class WorldUpdater {
 
         for (const c of chunkCache) {
           if (c) {
-            const nbCopy = c.blocks.slice();
-            const nlCopy = c.light.slice();
+            const nbCopy = c.blocks.subarray(startIndex, endIndex).slice();
+            const nlCopy = c.light.subarray(startIndex, endIndex).slice();
             neighborsBlocks.push(nbCopy);
             neighborsLight.push(nlCopy);
             transferList.push(nbCopy.buffer, nlCopy.buffer);
@@ -233,6 +240,8 @@ export class WorldUpdater {
             isDungeonDelver: this.world.isDungeonDelver,
             playerY: playerPosition.y,
             isMobile: isMobileDevice,
+            minY: dataMinY,
+            maxY: dataMaxY,
           },
           transferList,
         );

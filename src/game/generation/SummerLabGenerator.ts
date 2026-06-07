@@ -19,6 +19,7 @@ const platformCache = new Map<
 >();
 const islandCache = new Map<number, { cx: number; cz: number; iy: number }>();
 const customBlocks = new Map<string, number>();
+const customBlockIntMap = new Map<number, number>();
 
 function buildGiantTree(cx: number, cy: number, cz: number) {
   // Center trunk
@@ -1194,6 +1195,17 @@ function precomputePlatforms() {
     // deltaTheta = L / r
     theta += 2.6 / r;
   }
+
+  for (const [k, v] of customBlocks) {
+    const coords = k.split(',');
+    const bx = parseInt(coords[0], 10);
+    const by = parseInt(coords[1], 10);
+    const bz = parseInt(coords[2], 10);
+    if (bx >= -500 && bx <= 500 && bz >= -500 && bz <= 500) {
+      const key = (bx + 500) + ((bz + 500) * 2000) + (by * 4000000);
+      customBlockIntMap.set(key, v);
+    }
+  }
 }
 
 export function getSummerLabBlock(x: number, y: number, z: number): number {
@@ -1225,27 +1237,33 @@ export function getSummerLabBlock(x: number, y: number, z: number): number {
     precomputePlatforms();
 
     // Check custom blocks
-    const customBlock = customBlocks.get(`${x},${y},${z}`);
+    let customBlock: number | undefined;
+    if (x >= -500 && x <= 500 && z >= -500 && z <= 500) {
+      customBlock = customBlockIntMap.get((x + 500) + ((z + 500) * 2000) + (y * 4000000));
+    } else {
+      customBlock = customBlocks.get(`${x},${y},${z}`);
+    }
     if (customBlock) return customBlock;
 
     // Check islands
     // Find if y is within the top 10 blocks of any island
-    // Quick math: y modulo 30 could be near 1.
-    // Let's iterate all cached islands (small number, 500/30 = ~16 islands)
-    for (const [iy, island] of islandCache.entries()) {
-      if (y <= iy && y >= iy - 9) {
+    // Find the closest potential island iy
+    const closestIy = Math.ceil((y - 1) / 30) * 30 + 1;
+    if (y <= closestIy && y >= closestIy - 9) {
+      const island = islandCache.get(closestIy);
+      if (island) {
         const dx = x - island.cx;
         const dz = z - island.cz;
         const distSq = dx * dx + dz * dz;
 
         const maxRadius = 20;
-        const depthScale = 1.0 - Math.abs(y - iy) / 10;
+        const depthScale = 1.0 - Math.abs(y - closestIy) / 10;
         const radiusAtDepth = maxRadius * depthScale;
 
         if (distSq <= radiusAtDepth * radiusAtDepth) {
-          if (y === iy) {
+          if (y === closestIy) {
             return ItemType.CONCRETE_WHITE;
-          } else if (y > iy - 3) {
+          } else if (y > closestIy - 3) {
             return ItemType.DIRT;
           } else {
             return ItemType.STONE;
@@ -1397,4 +1415,85 @@ export function getSummerLabRespawn(playerState: any) {
     z: playerState.summerLabRespawn.z,
     yaw: playerState.summerLabRespawn.yaw,
   };
+}
+
+export function getSummerLabChunkBounds(cx: number, cz: number): { minY: number, maxY: number } | null {
+  precomputePlatforms();
+  const chunkMinX = cx * 16;
+  const chunkMaxX = chunkMinX + 15;
+  const chunkMinZ = cz * 16;
+  const chunkMaxZ = chunkMinZ + 15;
+
+  let minY = Infinity;
+  let maxY = -Infinity;
+
+  // Check spawn island
+  if (11 + 4 >= chunkMinX && 11 - 4 <= chunkMaxX &&
+      0 + 4 >= chunkMinZ && 0 - 4 <= chunkMaxZ) {
+    minY = Math.min(minY, -9);
+    maxY = Math.max(maxY, 1);
+  }
+
+  // Check islands
+  for (const [iy, island] of islandCache.entries()) {
+    if (island.cx + 20 >= chunkMinX && island.cx - 20 <= chunkMaxX &&
+        island.cz + 20 >= chunkMinZ && island.cz - 20 <= chunkMaxZ) {
+      minY = Math.min(minY, iy - 9);
+      maxY = Math.max(maxY, iy + 30); // islands have trees/structures up to +30 roughly
+    }
+  }
+
+  // Check platforms
+  for (const [iy, plat] of platformCache.entries()) {
+    if (plat.px + 2 >= chunkMinX && plat.px - 2 <= chunkMaxX &&
+        plat.pz + 2 >= chunkMinZ && plat.pz - 2 <= chunkMaxZ) {
+      minY = Math.min(minY, iy);
+      maxY = Math.max(maxY, iy);
+    }
+  }
+
+  // Custom blocks bounds check is tricky, so we'll just check if any custom block is in this chunk.
+  // We can pre-calculate chunk custom block presence!
+  if (!globalThis.customBlocksChunkMapForSummerLab) {
+    const map = new Map<string, { minY: number, maxY: number }>();
+    for (const [key, _] of customBlocks.entries()) {
+      const parts = key.split(",");
+      const x = parseInt(parts[0], 10);
+      const y = parseInt(parts[1], 10);
+      const z = parseInt(parts[2], 10);
+      const cxx = Math.floor(x / 16);
+      const czz = Math.floor(z / 16);
+      const cKey = `${cxx},${czz}`;
+      const bounds = map.get(cKey) || { minY: Infinity, maxY: -Infinity };
+      bounds.minY = Math.min(bounds.minY, y);
+      bounds.maxY = Math.max(bounds.maxY, y);
+      map.set(cKey, bounds);
+    }
+    
+    // Also add from customBlockIntMap
+    for (const [key, _] of customBlockIntMap.entries()) {
+      let temp = key;
+      const x = (temp % 2000) - 500;
+      temp = Math.floor(temp / 2000);
+      const z = (temp % 2000) - 500;
+      const y = Math.floor(temp / 2000);
+      const cxx = Math.floor(x / 16);
+      const czz = Math.floor(z / 16);
+      const cKey = `${cxx},${czz}`;
+      const bounds = map.get(cKey) || { minY: Infinity, maxY: -Infinity };
+      bounds.minY = Math.min(bounds.minY, y);
+      bounds.maxY = Math.max(bounds.maxY, y);
+      map.set(cKey, bounds);
+    }
+    globalThis.customBlocksChunkMapForSummerLab = map;
+  }
+
+  const customBounds = globalThis.customBlocksChunkMapForSummerLab.get(`${cx},${cz}`);
+  if (customBounds) {
+    minY = Math.min(minY, customBounds.minY);
+    maxY = Math.max(maxY, customBounds.maxY);
+  }
+
+  if (minY === Infinity) return null;
+  return { minY: Math.max(-10, minY - 2), maxY: Math.min(1500, maxY + 2) };
 }

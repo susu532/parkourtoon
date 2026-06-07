@@ -212,7 +212,7 @@ export class NPC {
       ? new THREE.MeshBasicMaterial({ map: skinTexture })
       : new THREE.MeshStandardMaterial({
           map: skinTexture,
-          roughness: 0.9,
+          roughness: 1.0,
           metalness: 0.0,
         });
     const outerMaterial = isPerformance
@@ -227,7 +227,7 @@ export class NPC {
           transparent: true,
           alphaTest: 0.1,
           side: THREE.DoubleSide,
-          roughness: 0.9,
+          roughness: 1.0,
           metalness: 0.0,
         });
 

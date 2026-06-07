@@ -7,7 +7,10 @@ import { buildHubCastles, generateHubTerrain } from "./generation/HubGenerator";
 import { getCastleBlock } from "./generation/SkyCastlesGenerator";
 import { getVillageBlock } from "./generation/SkyBridgeGenerator";
 import { getGiantMythicalShipBlock } from "./generation/ShipGenerator";
-import { getSummerLabBlock } from "./generation/SummerLabGenerator";
+import {
+  getSummerLabBlock,
+  getSummerLabChunkBounds,
+} from "./generation/SummerLabGenerator";
 import { generateSkyIslandTerrain } from "./generation/SkyIslandGenerator";
 import * as THREE from "three";
 import { skycastlesBakedBlocks } from "./SkycastlesBakedBlocks";
@@ -53,13 +56,24 @@ export async function generateChunkMethod(
       // }
 
       if (world.isSummerLab) {
-        if (distFromCenter <= 85) {
-          for (let y = 0; y < CHUNK_HEIGHT; y++) {
-            const worldY = y + WORLD_Y_OFFSET;
-            const block = getSummerLabBlock(worldX, worldY, worldZ);
-            if (block !== 0) {
-              // 0 is AIR
-              chunk.setBlockFast(x, y, z, block);
+        // max radius of islands generated is ~250.
+        if (distFromCenter <= 300) {
+          const bounds = (world as any)._summerLabBounds || ((world as any)._summerLabBounds = new Map());
+          const cKey = `${cx},${cz}`;
+          let chunkBounds = bounds.get(cKey);
+          if (chunkBounds === undefined) {
+             chunkBounds = getSummerLabChunkBounds(cx, cz) || null;
+             bounds.set(cKey, chunkBounds);
+          }
+          if (chunkBounds) {
+            for (let y = chunkBounds.minY - WORLD_Y_OFFSET; y <= chunkBounds.maxY - WORLD_Y_OFFSET; y++) {
+              if (y < 0 || y >= CHUNK_HEIGHT) continue;
+              const worldY = y + WORLD_Y_OFFSET;
+              const block = getSummerLabBlock(worldX, worldY, worldZ);
+              if (block !== 0) {
+                // 0 is AIR
+                chunk.setBlockFast(x, y, z, block);
+              }
             }
           }
         }

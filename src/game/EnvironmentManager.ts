@@ -52,7 +52,7 @@ export class EnvironmentManager implements ISystem {
     const isMobile =
       typeof window !== "undefined" &&
       ("ontouchstart" in window || navigator.maxTouchPoints > 0);
-    const shadowRes = isMobile ? 1024 : 4096;
+    const shadowRes = isMobile ? 512 : 2048;
     dirLight.shadow.mapSize.width = shadowRes;
     dirLight.shadow.mapSize.height = shadowRes;
     dirLight.shadow.bias = this.game.world.isSummerLab ? -0.0005 : 0.0015; // Adjust based on mode

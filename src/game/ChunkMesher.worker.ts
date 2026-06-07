@@ -29,6 +29,8 @@ export interface ChunkMesherRequest {
   isDungeonDelver?: boolean;
   playerY?: number;
   isMobile?: boolean;
+  minY?: number;
+  maxY?: number;
 }
 
 export interface ChunkMesherResponse {
@@ -95,14 +97,34 @@ export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
 
   const performanceMode = data.performanceMode;
   const CHUNK_SIZE = 16;
-  const CHUNK_HEIGHT = 256;
+  const CHUNK_HEIGHT = 1600;
   const WORLD_Y_OFFSET = -60;
 
   let minY = 0;
   let maxY = CHUNK_HEIGHT;
 
-  if (data.isMobile && data.playerY !== undefined) {
-    const verticalViewDistance = 48; // Limit vertical view on mobile
+
+  // Add bounds and access helper
+  const dataMinY = data.minY ?? 0;
+  const dataMaxY = data.maxY ?? CHUNK_HEIGHT;
+  
+  const getBlockAt = (blocks: Uint16Array | null, x: number, y: number, z: number) => {
+    if (!blocks || blocks.length === 0) return BLOCK.AIR;
+    if (y < dataMinY || y > dataMaxY) return BLOCK.AIR;
+    const index = x | (z << 4) | ((y - dataMinY) << 8);
+    return index < blocks.length ? blocks[index] : BLOCK.AIR;
+  };
+
+  const getLightAt = (light: Uint8Array | null, x: number, y: number, z: number) => {
+    if (!light || light.length === 0) return 15;
+    if (y < dataMinY || y > dataMaxY) return 15;
+    const index = x | (z << 4) | ((y - dataMinY) << 8);
+    return index < light.length ? light[index] : 15;
+  };
+
+
+  if (data.playerY !== undefined) {
+    const verticalViewDistance = data.isMobile ? 48 : 128; // Limit vertical view
     minY = Math.max(0, Math.floor(data.playerY - WORLD_Y_OFFSET) - verticalViewDistance);
     maxY = Math.min(CHUNK_HEIGHT, Math.floor(data.playerY - WORLD_Y_OFFSET) + verticalViewDistance);
   }
@@ -234,7 +256,7 @@ export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
   const getWaterHeight = (lx: number, lz: number, ly: number) => {
     let b;
     if (lx >= 0 && lx < 16 && lz >= 0 && lz < 16) {
-      b = data.blocks[lx | (lz << 4) | (ly << 8)];
+      b = getBlockAt(data.blocks, lx, ly, lz);
     } else {
       const cdx = Math.floor(lx / 16);
       const cdz = Math.floor(lz / 16);
@@ -243,7 +265,7 @@ export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
         light: data.neighborsLight[cdx + 1 + (cdz + 1) * 3],
       };
       if (c.blocks) {
-        b = c.blocks[(lx & 15) | ((lz & 15) << 4) | (ly << 8)];
+        b = getBlockAt(c.blocks, lx & 15, ly, lz & 15);
       } else {
         b = BLOCK.AIR;
       }
@@ -254,7 +276,7 @@ export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
     let above;
     if (ly + 1 < CHUNK_HEIGHT) {
       if (lx >= 0 && lx < 16 && lz >= 0 && lz < 16) {
-        above = data.blocks[lx | (lz << 4) | ((ly + 1) << 8)];
+        above = getBlockAt(data.blocks, lx, ly + 1, lz);
       } else {
         const cdx = Math.floor(lx / 16);
         const cdz = Math.floor(lz / 16);
@@ -263,7 +285,7 @@ export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
           light: data.neighborsLight[cdx + 1 + (cdz + 1) * 3],
         };
         if (c.blocks) {
-          above = c.blocks[(lx & 15) | ((lz & 15) << 4) | ((ly + 1) << 8)];
+          above = getBlockAt(c.blocks, lx & 15, ly + 1, lz & 15);
         } else {
           above = BLOCK.AIR;
         }
@@ -519,7 +541,7 @@ export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
     if (isWater(blockType) && dir !== 3) {
       let above;
       if (y + 1 < CHUNK_HEIGHT) {
-        above = data.blocks[x | (z << 4) | ((y + 1) << 8)];
+        above = getBlockAt(data.blocks, x, y + 1, z);
       } else {
         above = BLOCK.AIR;
       }
@@ -551,7 +573,7 @@ export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
       if (ny < 0 || ny >= CHUNK_HEIGHT) return false;
 
       if ((nx & ~15) === 0 && (nz & ~15) === 0) {
-        return isSolidBlock(data.blocks[nx | (nz << 4) | (ny << 8)]);
+        return isSolidBlock(getBlockAt(data.blocks, nx, ny, nz));
       } else {
         const cdx = nx >> 4;
         const cdz = nz >> 4;
@@ -561,7 +583,7 @@ export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
         };
         if (c.blocks) {
           return isSolidBlock(
-            c.blocks[(nx & 15) | ((nz & 15) << 4) | (ny << 8)],
+            getBlockAt(c.blocks, nx & 15, ny, nz & 15),
           );
         }
         return false;
@@ -1202,7 +1224,7 @@ export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
     const nz = z + dz;
     if (ny < 0 || ny >= CHUNK_HEIGHT) return false;
     if ((nx & ~15) === 0 && (nz & ~15) === 0) {
-      return isSolidBlock(data.blocks[nx | (nz << 4) | (ny << 8)]);
+      return isSolidBlock(getBlockAt(data.blocks, nx, ny, nz));
     } else {
       const cdx = nx >> 4;
       const cdz = nz >> 4;
@@ -1211,7 +1233,7 @@ export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
         light: data.neighborsLight[cdx + 1 + (cdz + 1) * 3],
       };
       if (c.blocks)
-        return isSolidBlock(c.blocks[(nx & 15) | ((nz & 15) << 4) | (ny << 8)]);
+        return isSolidBlock(getBlockAt(c.blocks, nx & 15, ny, nz & 15));
       return false;
     }
   };
@@ -1229,7 +1251,7 @@ export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
     const nz = z + dz;
     if (ny < 0 || ny >= CHUNK_HEIGHT) return 15;
     if ((nx & ~15) === 0 && (nz & ~15) === 0) {
-      return data.light[nx | (nz << 4) | (ny << 8)];
+      return getLightAt(data.light, nx, ny, nz);
     } else {
       const cdx = nx >> 4;
       const cdz = nz >> 4;
@@ -1237,7 +1259,7 @@ export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
         blocks: data.neighborsBlocks[cdx + 1 + (cdz + 1) * 3],
         light: data.neighborsLight[cdx + 1 + (cdz + 1) * 3],
       };
-      if (c.light) return c.light[(nx & 15) | ((nz & 15) << 4) | (ny << 8)];
+      if (c.light) return getLightAt(c.light, nx & 15, ny, nz & 15);
       return 15;
     }
   };
@@ -1247,7 +1269,7 @@ export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
   for (let x = 0; x < CHUNK_SIZE; x++) {
     for (let y = minY; y < maxY; y++) {
       for (let z = 0; z < CHUNK_SIZE; z++) {
-        const type = data.blocks[x | (z << 4) | (y << 8)];
+        const type = getBlockAt(data.blocks, x, y, z);
         if (type === BLOCK.AIR) continue;
 
         const isTypeTransparent = isTransparent(type);
@@ -1272,7 +1294,7 @@ export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
         // Right (dir 0)
         let nType;
         if (x < 15) {
-          nType = data.blocks[(x + 1) | (z << 4) | (y << 8)];
+          nType = getBlockAt(data.blocks, x + 1, y, z);
         } else {
           const c = {
             blocks: data.neighborsBlocks[2 + 1 * 3],
@@ -1280,7 +1302,7 @@ export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
           };
           const isCMeshed = !!(c && c.blocks);
           nType = isCMeshed
-            ? c.blocks[0 | (z << 4) | (y << 8)]
+            ? getBlockAt(c.blocks, 0, y, z)
             : typeIsWater
               ? BLOCK.WATER
               : BLOCK.AIR;
@@ -1323,7 +1345,7 @@ export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
               );
             }
             const light = getLightLevel(x, y, z, 1, 0, 0);
-            masks[0][z + y * 16 + x * 4096] =
+            masks[0][z + y * 16 + x * 16 * CHUNK_HEIGHT] =
               type |
               (ao0 << 10) |
               (ao1 << 12) |
@@ -1338,7 +1360,7 @@ export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
 
         // Left (dir 1)
         if (x > 0) {
-          nType = data.blocks[(x - 1) | (z << 4) | (y << 8)];
+          nType = getBlockAt(data.blocks, x - 1, y, z);
         } else {
           const c = {
             blocks: data.neighborsBlocks[0 + 1 * 3],
@@ -1346,7 +1368,7 @@ export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
           };
           const isCMeshed = !!(c && c.blocks);
           nType = isCMeshed
-            ? c.blocks[15 | (z << 4) | (y << 8)]
+            ? getBlockAt(c.blocks, 15, y, z)
             : typeIsWater
               ? BLOCK.WATER
               : BLOCK.AIR;
@@ -1389,7 +1411,7 @@ export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
               );
             }
             const light = getLightLevel(x, y, z, -1, 0, 0);
-            masks[1][z + y * 16 + x * 4096] =
+            masks[1][z + y * 16 + x * 16 * CHUNK_HEIGHT] =
               type |
               (ao0 << 10) |
               (ao1 << 12) |
@@ -1405,7 +1427,7 @@ export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
         // Top (dir 2)
         nType =
           y < CHUNK_HEIGHT - 1
-            ? data.blocks[x | (z << 4) | ((y + 1) << 8)]
+            ? getBlockAt(data.blocks, x, y + 1, z)
             : BLOCK.AIR;
         if (
           typeIsChest ||
@@ -1460,7 +1482,7 @@ export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
         }
 
         // Bottom (dir 3)
-        nType = y > 0 ? data.blocks[x | (z << 4) | ((y - 1) << 8)] : BLOCK.AIR;
+        nType = y > 0 ? getBlockAt(data.blocks, x, y - 1, z) : BLOCK.AIR;
         if (
           typeIsChest ||
           nType === BLOCK.AIR ||
@@ -1514,7 +1536,7 @@ export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
 
         // Front (dir 4)
         if (z < 15) {
-          nType = data.blocks[x | ((z + 1) << 4) | (y << 8)];
+          nType = getBlockAt(data.blocks, x, y, z + 1);
         } else {
           const c = {
             blocks: data.neighborsBlocks[1 + 2 * 3],
@@ -1522,7 +1544,7 @@ export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
           };
           const isCMeshed = !!(c && c.blocks);
           nType = isCMeshed
-            ? c.blocks[x | (0 << 4) | (y << 8)]
+            ? getBlockAt(c.blocks, x, y, 0)
             : typeIsWater
               ? BLOCK.WATER
               : BLOCK.AIR;
@@ -1565,7 +1587,7 @@ export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
               );
             }
             const light = getLightLevel(x, y, z, 0, 0, 1);
-            masks[4][x + y * 16 + z * 4096] =
+            masks[4][x + y * 16 + z * 16 * CHUNK_HEIGHT] =
               type |
               (ao0 << 10) |
               (ao1 << 12) |
@@ -1580,7 +1602,7 @@ export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
 
         // Back (dir 5)
         if (z > 0) {
-          nType = data.blocks[x | ((z - 1) << 4) | (y << 8)];
+          nType = getBlockAt(data.blocks, x, y, z - 1);
         } else {
           const c = {
             blocks: data.neighborsBlocks[1 + 0 * 3],
@@ -1588,7 +1610,7 @@ export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
           };
           const isCMeshed = !!(c && c.blocks);
           nType = isCMeshed
-            ? c.blocks[x | (15 << 4) | (y << 8)]
+            ? getBlockAt(c.blocks, x, y, 15)
             : typeIsWater
               ? BLOCK.WATER
               : BLOCK.AIR;
@@ -1631,7 +1653,7 @@ export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
               );
             }
             const light = getLightLevel(x, y, z, 0, 0, -1);
-            masks[5][x + y * 16 + z * 4096] =
+            masks[5][x + y * 16 + z * 16 * CHUNK_HEIGHT] =
               type |
               (ao0 << 10) |
               (ao1 << 12) |
@@ -1657,35 +1679,42 @@ export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
     const mask = masks[dir];
     let sliceMax, iMax, jMax;
     let sliceStart = 0, iStart = 0;
+    let iStride, sliceStride;
     if (dir === 0 || dir === 1) {
       sliceMax = 16;
       iStart = minY;
       iMax = maxY;
       jMax = 16;
+      iStride = 16;
+      sliceStride = 16 * CHUNK_HEIGHT;
     } // X slices. i=y, j=z
     else if (dir === 2 || dir === 3) {
       sliceStart = minY;
       sliceMax = maxY;
       iMax = 16;
       jMax = 16;
+      iStride = 16;
+      sliceStride = 256;
     } // Y slices. i=z, j=x
     else {
       sliceMax = 16;
       iStart = minY;
       iMax = maxY;
       jMax = 16;
+      iStride = 16;
+      sliceStride = 16 * CHUNK_HEIGHT;
     } // Z slices. i=y, j=x
 
     for (let slice = sliceStart; slice < sliceMax; slice++) {
       for (let i = iStart; i < iMax; i++) {
         for (let j = 0; j < jMax; ) {
-          const idx = j + i * jMax + slice * jMax * iMax;
+          const idx = j + i * iStride + slice * sliceStride;
           const val = mask[idx];
           if (val !== 0) {
             let w = 1;
             while (
               j + w < jMax &&
-              mask[j + w + i * jMax + slice * jMax * iMax] === val
+              mask[j + w + i * iStride + slice * sliceStride] === val
             ) {
               w++;
             }
@@ -1694,7 +1723,7 @@ export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
             while (i + h < iMax) {
               for (let k = 0; k < w; k++) {
                 if (
-                  mask[j + k + (i + h) * jMax + slice * jMax * iMax] !== val
+                  mask[j + k + (i + h) * iStride + slice * sliceStride] !== val
                 ) {
                   done = true;
                   break;
@@ -1746,7 +1775,7 @@ export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
 
             for (let di = 0; di < h; di++) {
               for (let dj = 0; dj < w; dj++) {
-                mask[j + dj + (i + di) * jMax + slice * jMax * iMax] = 0;
+                mask[j + dj + (i + di) * iStride + slice * sliceStride] = 0;
               }
             }
             j += w;

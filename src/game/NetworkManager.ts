@@ -2,6 +2,7 @@ import { useGameStore } from "../store/gameStore";
 import * as THREE from "three";
 import { encodePacketClient, decodePacketClient } from "./WSHelpersClient";
 import { encodeRLE, decodeRLE } from "./RLE";
+import { CHUNK_HEIGHT } from "./Chunk";
 import { audioManager } from "./AudioManager";
 import { CrazyGamesManager } from "./CrazyGamesManager";
 import { settingsManager } from "./Settings";
@@ -971,7 +972,7 @@ export class NetworkManager {
         if (data.cx === cx && data.cz === cz) {
           this.socket.off("chunkData", handler);
           if (data.patch) {
-            const out = new Uint16Array(16 * 256 * 16);
+            const out = new Uint16Array(16 * CHUNK_HEIGHT * 16);
             out.fill(65535);
             for (let i = 0; i < data.patch.length; i += 2) {
               out[data.patch[i]] = data.patch[i + 1];
@@ -979,7 +980,7 @@ export class NetworkManager {
             resolve(out);
           } else if (data.data) {
             const compressed = new Uint16Array(data.data);
-            const out = new Uint16Array(16 * 256 * 16);
+            const out = new Uint16Array(16 * CHUNK_HEIGHT * 16);
             decodeRLE(compressed, out);
             resolve(out);
           } else {

@@ -14,7 +14,7 @@ import {
 } from "./TextureAtlas";
 
 export const CHUNK_SIZE = 16;
-export const CHUNK_HEIGHT = 256;
+export const CHUNK_HEIGHT = 1600;
 export const WORLD_Y_OFFSET = -60;
 
 export class Chunk {
