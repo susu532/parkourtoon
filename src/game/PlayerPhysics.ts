@@ -189,27 +189,9 @@ export class PlayerPhysics {
         p.velocity.y += vertDir * currentSpeed * delta * 10.0;
     }
 
-    let targetDirZ = Number(input.moveForward) - Number(input.moveBackward);
-    let targetDirX = Number(input.moveRight) - Number(input.moveLeft);
-
-    let isMobile = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
-    if (isMobile && window.mobileInputs && (Math.abs(window.mobileInputs.joystickX) > 0 || Math.abs(window.mobileInputs.joystickY) > 0)) {
-      targetDirZ = -window.mobileInputs.joystickY;
-      targetDirX = window.mobileInputs.joystickX;
-    }
-
-    p.direction.z = targetDirZ;
-    p.direction.x = targetDirX;
-    if (targetDirZ === 0 && targetDirX === 0) {
-      p.direction.z = Number(input.moveForward) - Number(input.moveBackward);
-      p.direction.x = Number(input.moveRight) - Number(input.moveLeft);
-      p.direction.normalize();
-    } else {
-       // Only normalize if magnitude > 1 to avoid speeding up relative to analog amount, actually analog allows magnitude <= 1 natively
-       if (p.direction.lengthSq() > 1) {
-          p.direction.normalize();
-       }
-    }
+    p.direction.z = Number(input.moveForward) - Number(input.moveBackward);
+    p.direction.x = Number(input.moveRight) - Number(input.moveLeft);
+    p.direction.normalize();
 
     const currentSpeed = p.isFlying
       ? p.flySpeed
@@ -225,9 +207,9 @@ export class PlayerPhysics {
               ? p.crouchSpeed
               : p.speed;
 
-    if (Math.abs(p.direction.z) > 0)
+    if (input.moveForward || input.moveBackward)
       p.velocity.z -= p.direction.z * currentSpeed * delta * 10.0;
-    if (Math.abs(p.direction.x) > 0)
+    if (input.moveLeft || input.moveRight)
       p.velocity.x += p.direction.x * currentSpeed * delta * 10.0;
 
     // Apply movement
