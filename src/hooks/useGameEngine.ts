@@ -15,6 +15,7 @@ export function useGameEngine() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [game, setGame] = useState<Game | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const isMobileRef = useRef(false);
   const [targetServer, setTargetServer] = useState<string>("skybridge");
   const currentMode = useGameStore((state) => state.currentMode);
 
@@ -43,11 +44,11 @@ export function useGameEngine() {
         );
       const isMacTouch =
         navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1; // iPad on iOS 13+
-      setIsMobile(
-        isActuallyMobile ||
+      const mobile = isActuallyMobile ||
           isMacTouch ||
-          (touchCapable && window.innerWidth < 1024),
-      );
+          (touchCapable && window.innerWidth < 1024);
+      setIsMobile(mobile);
+      isMobileRef.current = mobile;
     };
 
     checkPointer();
@@ -101,6 +102,7 @@ export function useGameEngine() {
     resizeObserver.observe(containerRef.current);
 
     const handleLockChange = () => {
+      if (isMobileRef.current) return;
       const locked = document.pointerLockElement === document.body;
       useUIStore.getState().setLocked(locked);
       if (locked) {
@@ -319,7 +321,7 @@ export function useGameEngine() {
 
     const trySafeLock = (isEscapeKey = false) => {
       if (document.pointerLockElement === document.body) return;
-      if (isMobile) return;
+      if (isMobileRef.current) return;
 
       if (!pointerLockSM.current.canLock() || isEscapeKey) {
         return;
@@ -412,6 +414,7 @@ export function useGameEngine() {
     };
 
     const handlePointerLockError = () => {
+      if (isMobileRef.current) return;
       console.warn("Pointer lock failed, restoring pause menu.");
       if (!newGame.world.isHub) {
         useUIStore.getState().setPauseMenuOpen(true);
@@ -567,10 +570,14 @@ export function useGameEngine() {
       !uiState.isLaunchMenuOpen
     ) {
       const isTouch = e && e.pointerType === "touch";
-      if (isTouch) {
+      if (isTouch || isMobileRef.current) {
         try {
           audioManager.resume();
         } catch (err) {}
+        if (isMobileRef.current) {
+          useUIStore.getState().setLocked(true);
+          CrazyGamesManager.gameplayStart();
+        }
         return;
       }
 

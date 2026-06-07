@@ -820,9 +820,10 @@ export class EnvironmentManager implements ISystem {
         ? Math.max(0, sunY) * 2.5 + 0.5
         : Math.max(0, Math.abs(sunY)) * 0.8;
       if (this.game.world.isSummerLab) {
+        // Bright night, same as day
         targetIntensity = isDay
           ? targetIntensity * 0.8
-          : Math.max(0.4, targetIntensity * 0.5);
+          : 2.0; 
       } else if (isPremium) {
         // RTX Style: much brighter direct sunlight
         targetIntensity = isDay ? targetIntensity * 1.5 : targetIntensity * 1.2;
@@ -869,7 +870,7 @@ export class EnvironmentManager implements ISystem {
               ? 1.2
               : 0.8
             : this.game.world.isSummerLab
-              ? 0.8
+              ? 1.2
               : 0.3;
           if (isPremium && !this.game.world.isSummerLab) {
             // Stronger GI bounce feel
@@ -885,7 +886,9 @@ export class EnvironmentManager implements ISystem {
       let ambientIntensity = isDay
         ? Math.max(0, sunY) * 0.4 + 0.4
         : Math.abs(sunY) * 0.2 + 0.2;
-      if (this.game.world.isSummerLab) ambientIntensity *= 2.0; // Increased to brighten characters
+      if (this.game.world.isSummerLab) {
+        ambientIntensity = isDay ? ambientIntensity * 2.0 : 2.5; // Increased to brighten characters
+      }
       if (this.game.world.isDungeonDelver) ambientIntensity = 0.01;
 
       if (this.globalWeatherIntensity > 0) {

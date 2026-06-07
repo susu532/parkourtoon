@@ -251,7 +251,7 @@ export class NetworkManager {
     try {
       const region = settingsManager.getSettings().serverRegion || 'auto';
       const euUrl = getSecureBackendUrl("https://parkourtoon-server.onrender.com");
-      const usUrl = getSecureBackendUrl("https://summerlab-server-hhnw.onrender.com");
+      const usUrl = getSecureBackendUrl("https://parkourtoon-server.onrender.com");
       let baseUrl = euUrl;
 
       // Early environment check - fail fast if not allowed

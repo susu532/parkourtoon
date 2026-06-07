@@ -192,11 +192,12 @@ export class Game {
     const isMobile =
       typeof window !== "undefined" &&
       ("ontouchstart" in window || navigator.maxTouchPoints > 0);
-    this.world.renderDistance = settings.performanceMode
-      ? isMobile
-        ? Math.min(settings.renderDistance, 1)
-        : Math.min(settings.renderDistance, 3)
+    
+    // Always cap mobile render distance to a safe absolute maximum of 2, regardless of performance mode
+    this.world.renderDistance = isMobile
+      ? Math.min(settings.renderDistance, settings.performanceMode ? 1 : 2)
       : settings.renderDistance;
+      
     this.player.sensitivity = settings.sensitivity;
     this.player.baseFOV = settings.fov;
 

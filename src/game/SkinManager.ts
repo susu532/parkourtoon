@@ -194,16 +194,16 @@ export function generateSkin(seed: string): THREE.Texture {
     return x - Math.floor(x);
   };
 
-  const skinColors = ["#ffccaa", "#e0ac69", "#8d5524", "#c68642", "#f1c27d"];
+  const skinColors = ["#ffccaa", "#f1c27d", "#ffdeba", "#ffeac4", "#ffebdc"];
   const hairColors = [
-    "#000000",
-    "#4a3219",
-    "#e6ce70",
-    "#7c2a1b",
-    "#888888",
-    "#5c1010",
+    "#fde047",
+    "#fca5a5",
+    "#67e8f9",
+    "#bef264",
+    "#c084fc",
+    "#fdba74",
   ];
-  const eyeColors = ["#3b82f6", "#22c55e", "#8b4513", "#000000", "#6366f1"];
+  const eyeColors = ["#67e8f9", "#86efac", "#fca5a5", "#c084fc", "#fde047"];
   const shirtColors = [
     "#ef4444",
     "#3b82f6",
@@ -212,16 +212,16 @@ export function generateSkin(seed: string): THREE.Texture {
     "#a855f7",
     "#ec4899",
     "#ffffff",
-    "#1f2937",
-    "#0d9488",
+    "#06b6d4",
+    "#10b981",
   ];
   const pantsColors = [
-    "#1e3a8a",
-    "#172554",
-    "#374151",
-    "#1f2937",
-    "#422006",
-    "#0f172a",
+    "#60a5fa",
+    "#38bdf8",
+    "#4ade80",
+    "#f472b6",
+    "#c084fc",
+    "#fbbf24",
   ];
 
   const skinColor = skinColors[Math.floor(random() * skinColors.length)];
@@ -229,7 +229,7 @@ export function generateSkin(seed: string): THREE.Texture {
   const eyeColor = eyeColors[Math.floor(random() * eyeColors.length)];
   const shirtColor = shirtColors[Math.floor(random() * shirtColors.length)];
   const pantsColor = pantsColors[Math.floor(random() * pantsColors.length)];
-  const shoeColor = "#111111";
+  const shoeColor = shirtColors[Math.floor(random() * shirtColors.length)];
 
   // Fill with transparent first
   ctx.clearRect(0, 0, 64, 64);
@@ -305,18 +305,13 @@ export function generateSkin(seed: string): THREE.Texture {
   const fx = UV_MAP.head.front[0];
   const fy = UV_MAP.head.front[1];
 
-  // Eyes (y=4, x=1 and x=5)
+  // Eyes (y=4)
   ctx.fillStyle = "#ffffff"; // Sclera
   ctx.fillRect(fx + 1, fy + 4, 2, 2);
   ctx.fillRect(fx + 5, fy + 4, 2, 2);
   ctx.fillStyle = eyeColor; // Pupil
-  const lookDir = random() > 0.5 ? 1 : 0;
-  ctx.fillRect(fx + 1 + lookDir, fy + 4, 1, 2);
-  ctx.fillRect(fx + 5 + lookDir, fy + 4, 1, 2);
-
-  // Mouth (y=6, x=3 to 5)
-  ctx.fillStyle = "#aa5555";
-  ctx.fillRect(fx + 3, fy + 6, 2, 1);
+  ctx.fillRect(fx + 2, fy + 4, 1, 2);
+  ctx.fillRect(fx + 5, fy + 4, 1, 2);
 
   // 7. Outer Layer Details
   // Add a random accessory (glasses, headband, or nothing)
@@ -326,7 +321,7 @@ export function generateSkin(seed: string): THREE.Texture {
 
   if (accessoryType === 0) {
     // Glasses
-    ctx.fillStyle = "#222222";
+    ctx.fillStyle = shirtColors[Math.floor(random() * shirtColors.length)];
     ctx.fillRect(outerFx, outerFy + 3, 8, 1); // Frame top
     ctx.fillRect(outerFx, outerFy + 4, 1, 2); // Left edge
     ctx.fillRect(outerFx + 3, outerFy + 4, 2, 2); // Middle

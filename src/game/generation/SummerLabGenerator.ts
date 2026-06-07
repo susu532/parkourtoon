@@ -21,33 +21,82 @@ const islandCache = new Map<number, { cx: number; cz: number; iy: number }>();
 const customBlocks = new Map<string, number>();
 
 function buildGiantTree(cx: number, cy: number, cz: number) {
+  // Center trunk
   for (let dy = 0; dy < 15; dy++) {
-    for (let dx = -2; dx <= 2; dx++) {
-      for (let dz = -2; dz <= 2; dz++) {
-        if (dx * dx + dz * dz <= 4)
-          customBlocks.set(
-            `${cx + dx},${cy + 1 + dy},${cz + dz}`,
-            ItemType.WOOD,
-          );
-      }
-    }
-  }
-  for (let dy = 10; dy < 25; dy++) {
-    const isTop = dy > 18;
-    const rad = isTop ? 4 : 8;
-    for (let dx = -rad; dx <= rad; dx++) {
-      for (let dz = -rad; dz <= rad; dz++) {
+    const rad = Math.max(1.5, 3.5 - dy * 0.15);
+    for (let dx = -Math.ceil(rad); dx <= Math.ceil(rad); dx++) {
+      for (let dz = -Math.ceil(rad); dz <= Math.ceil(rad); dz++) {
         if (dx * dx + dz * dz <= rad * rad) {
-          if (!customBlocks.has(`${cx + dx},${cy + 1 + dy},${cz + dz}`)) {
-            customBlocks.set(
-              `${cx + dx},${cy + 1 + dy},${cz + dz}`,
-              ItemType.LEAVES,
-            );
-          }
+          customBlocks.set(`${cx + dx},${cy + 1 + dy},${cz + dz}`, ItemType.WOOD);
         }
       }
     }
   }
+
+  // Draw a branch
+  const drawBranch = (bx: number, by: number, bz: number, dx: number, dy: number, dz: number, len: number, isMain: boolean) => {
+    let px = bx, py = by, pz = bz;
+    for (let i = 0; i < len; i++) {
+        px += dx;
+        py += dy;
+        pz += dz;
+
+        // Droop down for the last half of the branch if it's long
+        if (i > len * 0.6 && isMain) {
+            py -= 0.2;
+        } else if (!isMain && i > len * 0.5) {
+            py -= 0.1;
+        }
+
+        const ix = Math.floor(px);
+        const iy = Math.floor(py);
+        const iz = Math.floor(pz);
+
+        const r = Math.max(0.5, 2 - (i / len) * 2);
+        for(let rx = -Math.ceil(r); rx <= Math.ceil(r); rx++) {
+             for(let rz = -Math.ceil(r); rz <= Math.ceil(r); rz++) {
+                 if (rx * rx + rz * rz <= r * r) {
+                      customBlocks.set(`${ix + rx},${iy},${iz + rz}`, ItemType.WOOD);
+                 }
+             }
+        }
+
+        // Add leaves around the branch
+        if (i > len * 0.3 && (i % 2 === 0 || i === len - 1)) {
+            const leafR = isMain ? 3 : 2; // drastically reduced from 5 to prevent OOM
+            for(let lx = -leafR; lx <= leafR; lx++) {
+                for(let ly = -1; ly <= 2; ly++) {
+                    for(let lz = -leafR; lz <= leafR; lz++) {
+                        if (lx * lx + Math.pow(ly*1.2, 2) + lz * lz <= leafR * leafR) {
+                            const key = `${ix + lx},${iy + ly},${iz + lz}`;
+                            if (!customBlocks.has(key)) {
+                                customBlocks.set(key, ItemType.LEAVES);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+  };
+
+  // Main spreading branches (like an elm or oak)
+  const numBranches = 5;
+  for (let i = 0; i < numBranches; i++) {
+     const angle = (i / numBranches) * Math.PI * 2;
+     // The length of branches should be quite long to match the sprawling image
+     drawBranch(cx, cy + 8, cz, Math.cos(angle) * 1.5, 0.4, Math.sin(angle) * 1.5, 10, true);
+  }
+
+  // Upper branches for the main crown
+  const numUpperBranches = 4;
+  for(let i = 0; i < numUpperBranches; i++) {
+     const angle = (i / numUpperBranches) * Math.PI * 2 + 0.5;
+     drawBranch(cx, cy + 13, cz, Math.cos(angle) * 1.1, 0.7, Math.sin(angle) * 1.1, 8, false);
+  }
+
+  // Top crown
+  drawBranch(cx, cy + 14, cz, 0, 1, 0, 6, false);
 }
 
 function buildMedievalCastle(cx: number, cy: number, cz: number) {

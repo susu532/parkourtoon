@@ -63,9 +63,10 @@ export function MapLoadingScreen() {
               : {
                   backgroundColor: "#1E1E24",
                   backgroundImage:
-                    "repeating-linear-gradient(45deg, #2A2A35 25%, transparent 25%, transparent 75%, #2A2A35 75%, #2A2A35), repeating-linear-gradient(45deg, #2A2A35 25%, #1E1E24 25%, #1E1E24 75%, #2A2A35 75%, #2A2A35)",
-                  backgroundPosition: "0 0, 20px 20px",
-                  backgroundSize: "40px 40px",
+                    'url("https://raw.githubusercontent.com/susu532/sounds/main/minecraft/a_resize_this_image_to.jpeg")',
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                  backgroundRepeat: "no-repeat",
                 }
           }
         >

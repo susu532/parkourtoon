@@ -1,6 +1,7 @@
 import React from "react";
 import { useUIStore } from "../store/uiStore";
 import { motion, AnimatePresence } from "motion/react";
+import { Play } from "lucide-react";
 
 export const TutorialUI: React.FC = () => {
   const showTutorialPopup = useUIStore((state) => state.showTutorialPopup);
@@ -14,32 +15,40 @@ export const TutorialUI: React.FC = () => {
   return (
     <AnimatePresence>
       {showTutorialPopup && !isLaunchMenuOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-0 pointer-events-auto">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 pointer-events-auto bg-white/30 backdrop-blur-sm">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/60 pointer-events-none"
+            className="absolute inset-0 pointer-events-none"
             onClick={handleClose}
           />
           
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -10 }}
-            className="relative w-full max-w-3xl bg-[var(--ui-bg)] border-2 border-[var(--ui-border)] p-4 rounded shadow-xl flex flex-col gap-4 text-[var(--ui-text)]"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="relative w-full max-w-lg bg-white border border-zinc-200/80 p-2 rounded-2xl shadow-2xl flex flex-col items-center"
           >
-            <div className="w-full rounded overflow-hidden shadow border border-black/20 bg-zinc-950/40">
-              <img src="https://raw.githubusercontent.com/susu532/sounds/main/minecraft/1.png" alt="Parkour Toon Tutorial" className="w-full h-auto object-contain max-h-[70vh] mx-auto" />
+            <div className="w-full rounded-xl overflow-hidden mb-2">
+              <img 
+                src="https://raw.githubusercontent.com/susu532/sounds/main/minecraft/1.png" 
+                alt="Tutorial" 
+                className="w-full h-auto object-contain bg-white" 
+                loading="lazy"
+              />
             </div>
 
-            <button
-              onClick={handleClose}
-              className="py-3 bg-[var(--ui-primary)] hover:bg-[var(--ui-primary-hover)] active:bg-[var(--ui-primary-active)] text-white font-bold rounded shadow-sm hover:shadow-md transition-all uppercase tracking-wide text-md border border-black/20 w-full"
-            >
-              Start Playing
-            </button>
+            <div className="p-2 w-full">
+              <button
+                onClick={handleClose}
+                className="w-full py-3.5 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95 uppercase tracking-wide text-sm"
+              >
+                <Play className="w-5 h-5 fill-current" />
+                Start Playing
+              </button>
+            </div>
           </motion.div>
         </div>
       )}
