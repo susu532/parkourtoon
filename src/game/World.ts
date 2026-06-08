@@ -1449,6 +1449,11 @@ export class World {
     this.updater.update(playerPosition, camera);
   }
 
+  dispose() {
+    this.meshWorkers.forEach((w) => w.terminate());
+    this.meshWorkers = [];
+  }
+
   rebuildAllChunks() {
     this.chunks.forEach((chunk) => {
       chunk.needsUpdate = true;

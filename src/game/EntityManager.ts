@@ -1105,10 +1105,15 @@ export class EntityManager {
     this.minions.forEach((minion) => disposeObject(minion.mesh));
     this.mobs.forEach((mob) => disposeObject(mob.group));
 
+    this.mobPool.forEach((pool) => pool.forEach((mob) => disposeObject(mob.group)));
+    this.remotePlayerPool.forEach((player) => disposeObject(player.group));
+
     this.npcs.clear();
     this.remotePlayers.clear();
     this.minions.clear();
     this.mobs.clear();
+    this.mobPool.clear();
+    this.remotePlayerPool = [];
 
     this.droppedItemManager.destroy(); // Optional, but good practice
   }

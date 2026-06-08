@@ -826,8 +826,8 @@ export class RemotePlayer {
 
   knockback(dir: THREE.Vector3, force: number) {
     // Client-side visual knockback prediction for instant response
-    this.knockbackVelocity.copy(dir).multiplyScalar(force * 1.5);
-    this.knockbackVelocity.y = 3.2;
+    this.knockbackVelocity.copy(dir).multiplyScalar(force * 0.75);
+    this.knockbackVelocity.y = 3.75; // Strong vertical lift for arc (simulates 2.75 + float compensation)
     this.lastKnockbackTime = Date.now();
   }
 
@@ -939,6 +939,9 @@ export class RemotePlayer {
 
     // Apply knockback to prediction offset instead of modifying interpolation tracks
     if (this.knockbackVelocity.lengthSq() > 0.01) {
+      // Apply realistic gravity to the visual knockback prediction
+      this.knockbackVelocity.y -= 28.0 * delta; // standard gravity acceleration pulling it down
+
       const step = this.knockbackVelocity.clone().multiplyScalar(delta);
 
       if (world) {
@@ -984,7 +987,9 @@ export class RemotePlayer {
         this.predictionOffset.add(step);
       }
 
-      this.knockbackVelocity.multiplyScalar(1.0 - 8.0 * delta); // Snappier friction for predictability
+      // Decelerate horizontal axes faster (friction), let gravity govern vertical axis
+      this.knockbackVelocity.x *= Math.exp(-4.605 * delta);
+      this.knockbackVelocity.z *= Math.exp(-4.605 * delta);
     }
 
     // Decay the prediction offset slowly as fallback (in case server misses knockback)

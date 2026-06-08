@@ -122,8 +122,22 @@ export class WorldUpdater {
     const chunksToMesh: { chunk: any; distSq: number; inFrustum: boolean }[] =
       [];
     let activeMeshing = 0;
+    
+    const isMobileDevice =
+      typeof window !== "undefined" &&
+      ("ontouchstart" in window || navigator.maxTouchPoints > 0);
+    const verticalViewDistance = isMobileDevice ? 48 : 128; // Limit vertical view
+
     for (const chunk of this.world.chunks.values()) {
       if (chunk.isMeshing) activeMeshing++;
+
+      // Remesh if the player moved vertically significantly
+      if (!chunk.needsUpdate && chunk.lastMeshedPlayerY !== undefined) {
+        if (Math.abs(chunk.lastMeshedPlayerY - playerPosition.y) > verticalViewDistance / 2) {
+          chunk.needsUpdate = true;
+        }
+      }
+
       if (chunk.needsUpdate && !chunk.isMeshing) {
         const dx = chunk.x - pcx;
         const dz = chunk.z - pcz;
@@ -156,9 +170,6 @@ export class WorldUpdater {
 
     for (const { chunk } of chunksToMesh) {
       // Limit concurrent meshing to prevent stutter, scaling down dramatically for mobile devices
-      const isMobileDevice =
-        typeof window !== "undefined" &&
-        ("ontouchstart" in window || navigator.maxTouchPoints > 0);
       let maxConcurrent = isMapLoading
         ? 32
         : chunksToMesh[0]?.inFrustum
@@ -186,7 +197,6 @@ export class WorldUpdater {
 
         const isPerformanceMode = settingsManager.getSettings().performanceMode;
 
-        const verticalViewDistance = isMobileDevice ? 48 : 128; // Limit vertical view
         const dataMinY = Math.max(0, Math.floor(playerPosition.y - WORLD_Y_OFFSET) - verticalViewDistance);
         const dataMaxY = Math.min(CHUNK_HEIGHT - 1, Math.floor(playerPosition.y - WORLD_Y_OFFSET) + verticalViewDistance);
 
@@ -217,6 +227,7 @@ export class WorldUpdater {
 
         chunk.isMeshing = true;
         chunk.needsUpdate = false;
+        chunk.lastMeshedPlayerY = playerPosition.y;
 
         const taskId = ++this.world.taskIdCounter;
         const promise = new Promise((resolve, reject) => {

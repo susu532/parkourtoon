@@ -4,6 +4,7 @@ import { settingsManager } from "./Settings";
 import { ItemType } from "./Inventory";
 import { Perspective } from "./Player";
 import { useGameStore } from "../store/gameStore";
+import { hoseSoundSynth } from "./HoseSoundSynth";
 
 import { ISystem } from "./ISystem";
 
@@ -86,6 +87,7 @@ export class InteractionSystem implements ISystem {
     // Check for fluid chocolate hose emission
     const equippedItem =
       this.game.player.inventory.slots[this.game.player.hotbarIndex];
+    let activeSprayType: "water" | "chocolate" | null = null;
     if (
       equippedItem?.type === ItemType.FLUID_CHOCOLATE_HOSE ||
       equippedItem?.type === ItemType.WASHING_HOSE
@@ -94,6 +96,7 @@ export class InteractionSystem implements ISystem {
         this.game.player.inputController.isRightMouseDown ||
         this.game.player.isLeftMouseDown
       ) {
+        activeSprayType = equippedItem.type === ItemType.WASHING_HOSE ? "water" : "chocolate";
         if (this.game.chocolateFluidSystem) {
           const isSpray =
             this.game.player.inputController.isRightMouseDown ||
@@ -187,9 +190,21 @@ export class InteractionSystem implements ISystem {
         }
       }
     }
+
+    // Update the continuous hose sound synthesizer state
+    try {
+      hoseSoundSynth.setLocalSprayActive(activeSprayType);
+    } catch (e) {
+      console.warn("Could not set hose sound active status:", e);
+    }
   }
 
   destroy() {
+    try {
+      hoseSoundSynth.stopAll();
+    } catch (e) {
+      console.warn("Could not stop hose sound synthesizer on destroy:", e);
+    }
     if (this.selectionBox) {
       this.game.scene.remove(this.selectionBox);
       this.selectionBox.geometry.dispose();

@@ -451,7 +451,9 @@ export class Player {
         if (
           !wasDead &&
           getInventoryCount(ItemType.FLUID_CHOCOLATE_HOSE) === 0 &&
-          getInventoryCount(ItemType.BOW) === 0
+          getInventoryCount(ItemType.BOW) === 0 && 
+            getInventoryCount(ItemType.WASHING_HOSE) === 0 && 
+            !this.inventory.isBuilder
         ) {
           window.dispatchEvent(new CustomEvent("triggerChooseRole"));
         }
@@ -603,14 +605,14 @@ export class Player {
 
     if (knockbackDir) {
       // Normalize and apply a consistent, powerful knockback
-      const force = Math.max(8.0, knockbackDir.length());
+      const force = Math.max(4.0, knockbackDir.length() * 0.5);
       const dir = knockbackDir.clone().normalize();
 
       this.knockbackVelocity.x = dir.x * force;
       this.knockbackVelocity.z = dir.z * force;
 
       // Add vertical lift to make knockback feel more impactful (works in mid-air too)
-      this.velocity.y = (this.velocity.y || 0) + 2.2;
+      this.velocity.y = (this.velocity.y || 0) + 1.1;
     }
   }
 

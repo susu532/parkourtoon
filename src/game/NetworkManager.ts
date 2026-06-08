@@ -824,7 +824,6 @@ export class NetworkManager {
     );
 
     this.socket.on("levelUp", (data: { level: number; skill?: string }) => {
-      CrazyGamesManager.happyTime();
       const currentMode = useGameStore.getState().currentMode;
       let skillName = data.skill;
       if (!skillName) {

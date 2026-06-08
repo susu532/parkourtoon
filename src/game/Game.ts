@@ -119,6 +119,7 @@ export class Game {
       canvas,
       antialias: false,
       powerPreference: "high-performance",
+      precision: "highp", // Force highp to fix point lights on mobile devices
     });
 
     this.renderer.setPixelRatio(
@@ -367,6 +368,8 @@ export class Game {
         chunk.transparentMesh.geometry.dispose();
       }
     });
+
+    this.world.dispose();
 
     this.world.meshesToAdd = [];
 

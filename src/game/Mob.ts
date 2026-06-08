@@ -46,6 +46,28 @@ export class Mob {
   lastNetworkUpdate: number = Date.now();
   textureAtlas: THREE.Texture | null = null;
 
+  destroy() {
+    if (this.group) {
+      this.group.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          if (child.geometry) {
+            child.geometry.dispose();
+          }
+          if (child.material) {
+            if (Array.isArray(child.material)) {
+              child.material.forEach((m) => m.dispose());
+            } else {
+              child.material.dispose();
+            }
+          }
+        }
+      });
+      if (this.group.parent) {
+        this.group.parent.remove(this.group);
+      }
+    }
+  }
+
   velocity = new THREE.Vector3();
   targetPosition: THREE.Vector3 | null = null;
   lastNetPos: THREE.Vector3 = new THREE.Vector3();
@@ -810,15 +832,15 @@ export class Mob {
 
   knockback(dir: THREE.Vector3, force: number) {
     if (this.type === MobType.MORVANE) return;
-    this.velocity.x = dir.x * force;
-    this.velocity.z = dir.z * force;
-    this.velocity.y = 5.5; // Upward pop (lift)
+    this.velocity.x = dir.x * force * 0.5;
+    this.velocity.z = dir.z * force * 0.5;
+    this.velocity.y = 2.75; // Upward pop (lift)
     this.knockbackTimer = 0.5; // 500ms of knockback where AI movement is disabled
     this.lastKnockbackTime = Date.now();
 
     // Client-side visual knockback prediction
-    this.knockbackVelocity.copy(dir).multiplyScalar(force);
-    this.knockbackVelocity.y = 5.5;
+    this.knockbackVelocity.copy(dir).multiplyScalar(force * 0.5);
+    this.knockbackVelocity.y = 2.75;
   }
 
   takeDamage(
