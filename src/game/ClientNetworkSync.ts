@@ -108,6 +108,7 @@ export class ClientNetworkSync {
           if (rp) {
             rp.isDead = playersMap[id].isDead || false;
             rp.isSpectator = playersMap[id].isSpectator || false;
+            rp.currentEmote = playersMap[id].currentEmote;
           }
         }
       }
@@ -247,6 +248,9 @@ export class ClientNetworkSync {
           rp.health = player.health || 100;
           if (player.currentEmoji !== undefined) {
             rp.currentEmoji = player.currentEmoji;
+          }
+          if (player.currentEmote !== undefined) {
+            rp.currentEmote = player.currentEmote;
           }
         }
       }

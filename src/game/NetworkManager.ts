@@ -798,7 +798,33 @@ export class NetworkManager {
             "System",
             `§e${data.sourceName} accepted your friend request!`,
           );
-        // It is up to CommunitySidebar to actually add to 'friends' array locally, or we can trigger an event
+          
+        // Safely update localStorage so it persists even if the sidebar is unmounted
+        try {
+          const savedStr = localStorage.getItem("starplex_friends");
+          let friends = savedStr ? JSON.parse(savedStr) : [];
+          if (!Array.isArray(friends)) friends = [];
+
+          if (!friends.some((f: any) => f && f.name && f.name.toUpperCase() === data.sourceName.toUpperCase())) {
+            const randomColors = [
+              "#C6895C", "#5F3A19", "#4E5F19", "#194B5F",
+              "#5F194E", "#E09944", "#44E099", "#9944E0",
+            ];
+            const randomColor = randomColors[Math.floor(Math.random() * randomColors.length)];
+
+            friends.push({
+              id: Date.now().toString() + Math.floor(Math.random() * 1000).toString(),
+              name: data.sourceName,
+              online: true,
+              avatarColor: randomColor,
+            });
+            localStorage.setItem("starplex_friends", JSON.stringify(friends));
+          }
+        } catch (e) {
+          console.warn("Failed to update friends in localStorage", e);
+        }
+
+        // It is up to CommunitySidebar to actually add to 'friends' array locally if mounted
         window.dispatchEvent(
           new CustomEvent("friendAcceptedNetwork", { detail: data.sourceName }),
         );
@@ -835,6 +861,11 @@ export class NetworkManager {
         else skillName = "Island Level";
       }
       useGameStore.getState().addLevelUpPopup(skillName, data.level);
+      try {
+        CrazyGamesManager.happytime();
+      } catch (e) {
+        console.warn("Could not play happytime:", e);
+      }
     });
 
     this.socket.on("shootArrow", (data) => {

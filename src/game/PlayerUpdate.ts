@@ -156,6 +156,7 @@ export function updatePlayer(player: Player, delta: number) {
     !player.isSpectator &&
     !isHose
   ) {
+    if (player.currentEmote) player.currentEmote = undefined;
     if (!player.isMining && !player.isFlying) {
       // It should have been started by onMouseDown, if not, wait for another click.
       // In survival we don't auto-start mining immediately on drag unless we are still holding left click after a block breaks.
@@ -381,7 +382,11 @@ export function updatePlayer(player: Player, delta: number) {
   const input = player.inputController;
   _tempVec2.set(player.velocity.x, player.velocity.z);
   const horizontalVelocity = _tempVec2.length();
-  const isMoving = horizontalVelocity > 0.1;
+  const isMoving = horizontalVelocity > 0.1 || Math.abs(player.velocity.y) > 0.1;
+
+  if (isMoving && player.currentEmote) {
+    player.currentEmote = undefined;
+  }
 
   // Smooth camera height for crouching
   player.targetCameraHeight = input.isCrouching
@@ -936,6 +941,7 @@ export function updatePlayer(player: Player, delta: number) {
     defense: skyBridgeManager.effectiveStats.defense || 0,
     maxHealth: skyBridgeManager.effectiveStats.maxHealth || 100,
     currentEmoji: player.currentEmoji,
+    currentEmote: player.currentEmote,
   };
 
   const stateHash = JSON.stringify(currentState);

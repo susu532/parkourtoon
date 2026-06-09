@@ -118,6 +118,8 @@ export class Player {
   currentModelType: ItemType | null = null;
   playerHeadPos = new THREE.Vector3();
   currentEmoji?: string;
+  currentEmote?: string;
+  emoteTimer: number = 0;
 
   // Animation state
   walkCycle = 0;

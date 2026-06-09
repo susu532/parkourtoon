@@ -4,6 +4,7 @@ import { useGameStore } from "../store/gameStore";
 import { Sparkles, Trophy, Star } from "lucide-react";
 import { audioManager } from "../game/AudioManager";
 import { CrazyGamesManager } from "../game/CrazyGamesManager";
+import confetti from "canvas-confetti";
 
 export const LevelUpUI: React.FC = () => {
   const popups = useGameStore((state) => state.levelUpPopups);
@@ -18,9 +19,26 @@ export const LevelUpUI: React.FC = () => {
       // Play level-up celebration sound and trigger Confetti
       try {
         audioManager.play("level_up", 0.7, 1.0);
+      } catch (e) {
+        console.warn("Could not play level_up audio:", e);
+      }
+
+      try {
+        confetti({
+          particleCount: 150,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ["#55FFFF", "#FF55FF", "#FFFF55", "#55FF55"],
+          zIndex: 99999,
+        });
+      } catch (e) {
+        console.warn("Could not fire confetti:", e);
+      }
+
+      try {
         CrazyGamesManager.happytime();
       } catch (e) {
-        console.warn("Could not play level_up audio or happytime:", e);
+        console.warn("Could not play happytime:", e);
       }
     }
   }, [popups, currentPopup]);

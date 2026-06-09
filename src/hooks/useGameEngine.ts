@@ -15,7 +15,6 @@ export function useGameEngine() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [game, setGame] = useState<Game | null>(null);
   const [isMobile, setIsMobile] = useState(false);
-  const isMobileRef = useRef(false);
   const [targetServer, setTargetServer] = useState<string>("skybridge");
   const currentMode = useGameStore((state) => state.currentMode);
 
@@ -44,11 +43,11 @@ export function useGameEngine() {
         );
       const isMacTouch =
         navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1; // iPad on iOS 13+
-      const mobile = isActuallyMobile ||
+      setIsMobile(
+        isActuallyMobile ||
           isMacTouch ||
-          (touchCapable && window.innerWidth < 1024);
-      setIsMobile(mobile);
-      isMobileRef.current = mobile;
+          (touchCapable && window.innerWidth < 1024),
+      );
     };
 
     checkPointer();
@@ -63,6 +62,34 @@ export function useGameEngine() {
       mediaQuery.addListener(handler);
     }
 
+    const unsubUI = useUIStore.subscribe((state) => {
+      if (
+        state.isInventoryOpen ||
+        state.isShopOpen ||
+        state.isSettingsOpen ||
+        state.isPauseMenuOpen ||
+        state.isServerJoinOpen ||
+        state.isLaunchMenuOpen ||
+        state.isChestOpen ||
+        state.isLoadoutOpen ||
+        state.isEmojiWheelOpen ||
+        state.isEmoteWheelOpen ||
+        state.showTutorialPopup
+      ) {
+        if (document.pointerLockElement) {
+          document.exitPointerLock?.();
+        }
+      }
+    });
+
+    const unsubGame = useGameStore.subscribe((state) => {
+      if (state.isFluidColorPickerOpen || state.showLeaderboard) {
+        if (document.pointerLockElement) {
+          document.exitPointerLock?.();
+        }
+      }
+    });
+
     return () => {
       active = false;
       CrazyGamesManager.removeJoinRoomListener(handleJoinRoom);
@@ -71,6 +98,8 @@ export function useGameEngine() {
       } else if (mediaQuery.removeListener) {
         mediaQuery.removeListener(handler);
       }
+      unsubUI();
+      unsubGame();
     };
   }, []);
 
@@ -102,7 +131,6 @@ export function useGameEngine() {
     resizeObserver.observe(containerRef.current);
 
     const handleLockChange = () => {
-      if (isMobileRef.current) return;
       const locked = document.pointerLockElement === document.body;
       useUIStore.getState().setLocked(locked);
       if (locked) {
@@ -122,9 +150,13 @@ export function useGameEngine() {
             !state.isSettingsOpen &&
             !state.isChestOpen &&
             !state.isLoadoutOpen &&
+            !state.isServerJoinOpen &&
+            !state.isLaunchMenuOpen &&
+            !state.showTutorialPopup &&
             !gameStoreState.isFluidColorPickerOpen &&
             !gameStoreState.showLeaderboard &&
             !state.isEmojiWheelOpen &&
+            !state.isEmoteWheelOpen &&
             !state.isTyping
           ) {
             state.setPauseMenuOpen(true);
@@ -175,6 +207,23 @@ export function useGameEngine() {
           newGame.controls.unlock();
           state.setSettingsOpen(false);
           state.setPauseMenuOpen(false);
+          state.setEmoteWheelOpen(false);
+        } else {
+          handleStart(null);
+        }
+      }
+
+      if (e.code === "KeyJ") {
+        if (typing) return;
+        const newState = !state.isEmoteWheelOpen;
+        state.setEmoteWheelOpen(newState);
+        if (newState) {
+          suppressPauseMenu.current = true;
+          (window as any).suppressPauseMenu = true;
+          newGame.controls.unlock();
+          state.setSettingsOpen(false);
+          state.setPauseMenuOpen(false);
+          state.setEmojiWheelOpen(false);
         } else {
           handleStart(null);
         }
@@ -243,6 +292,7 @@ export function useGameEngine() {
           isLaunchMenuOpen: launchMenu,
           isLoadoutOpen: loadout,
           isEmojiWheelOpen: emojiWheel,
+          isEmoteWheelOpen: emoteWheel,
         } = state;
         const colorPickerOpen = useGameStore.getState().isFluidColorPickerOpen;
 
@@ -267,7 +317,8 @@ export function useGameEngine() {
           launchMenu ||
           loadout ||
           colorPickerOpen ||
-          emojiWheel
+          emojiWheel ||
+          emoteWheel
         ) {
           state.setInventoryOpen(false);
           state.setShopOpen(false);
@@ -321,7 +372,7 @@ export function useGameEngine() {
 
     const trySafeLock = (isEscapeKey = false) => {
       if (document.pointerLockElement === document.body) return;
-      if (isMobileRef.current) return;
+      if (isMobile) return;
 
       if (!pointerLockSM.current.canLock() || isEscapeKey) {
         return;
@@ -414,7 +465,6 @@ export function useGameEngine() {
     };
 
     const handlePointerLockError = () => {
-      if (isMobileRef.current) return;
       console.warn("Pointer lock failed, restoring pause menu.");
       if (!newGame.world.isHub) {
         useUIStore.getState().setPauseMenuOpen(true);
@@ -566,18 +616,15 @@ export function useGameEngine() {
       !uiState.isServerJoinOpen &&
       !uiState.isLoadoutOpen &&
       !uiState.isEmojiWheelOpen &&
+      !uiState.isEmoteWheelOpen &&
       !uiState.showTutorialPopup &&
       !uiState.isLaunchMenuOpen
     ) {
       const isTouch = e && e.pointerType === "touch";
-      if (isTouch || isMobileRef.current) {
+      if (isTouch) {
         try {
           audioManager.resume();
         } catch (err) {}
-        if (isMobileRef.current) {
-          useUIStore.getState().setLocked(true);
-          CrazyGamesManager.gameplayStart();
-        }
         return;
       }
 

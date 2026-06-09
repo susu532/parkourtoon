@@ -93,10 +93,10 @@ export class PlayerInputController {
         const jX = window.mobileInputs.joystickX;
         const jY = window.mobileInputs.joystickY;
 
-        this.moveForward = jY < -0.2;
-        this.moveBackward = jY > 0.2;
-        this.moveLeft = jX < -0.2;
-        this.moveRight = jX > 0.2;
+        this.moveForward = jY < -0.05;
+        this.moveBackward = jY > 0.05;
+        this.moveLeft = jX < -0.05;
+        this.moveRight = jX > 0.05;
         this.isSprinting = window.mobileInputs.isSprinting;
 
         const wasMovingUp = this.moveUp;

@@ -16,6 +16,9 @@ export const HotbarUI: React.FC<{ game: Game | null }> = ({ game }) => {
   const setGlobalHotbarIndex = useGameStore((state) => state.setHotbarIndex);
   const isEmojiWheelOpen = useUIStore((state) => state.isEmojiWheelOpen);
   const setEmojiWheelOpen = useUIStore((state) => state.setEmojiWheelOpen);
+  const isEmoteWheelOpen = useUIStore((state) => state.isEmoteWheelOpen);
+  const setEmoteWheelOpen = useUIStore((state) => state.setEmoteWheelOpen);
+  const EMOTES = ["wave", "dance", "cheer", "floss", "zombie", "headbang"];
 
   const [hotbarItems, setHotbarItems] = useState<(any | null)[]>(
     new Array(9).fill(null),
@@ -133,6 +136,52 @@ export const HotbarUI: React.FC<{ game: Game | null }> = ({ game }) => {
         </div>
       )}
 
+      {/* Emote Wheel */}
+      {isEmoteWheelOpen && (
+        <div
+          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-64 h-64 bg-black/60 rounded-full border-4 border-white/20 backdrop-blur-sm pointer-events-auto"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {EMOTES.map((emote, index) => {
+            const angle = (index / EMOTES.length) * Math.PI * 2 - Math.PI / 2;
+            const radius = 90;
+            const x = Math.cos(angle) * radius;
+            const y = Math.sin(angle) * radius;
+
+            return (
+              <button
+                key={index}
+                className="absolute flex items-center justify-center w-20 h-14 bg-white/10 hover:bg-white/30 rounded-lg transition-transform hover:scale-110 hover:z-10"
+                style={{
+                  left: `calc(50% + ${x}px)`,
+                  top: `calc(50% + ${y}px)`,
+                  transform: "translate(-50%, -50%)",
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (game) {
+                    game.player.currentEmote = emote;
+                    game.player.emoteTimer = 0;
+                  }
+                  setEmoteWheelOpen(false);
+                }}
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  if (game) {
+                    game.player.currentEmote = emote;
+                    game.player.emoteTimer = 0;
+                  }
+                  setEmoteWheelOpen(false);
+                }}
+              >
+                <span className="text-sm font-bold text-white capitalize">{emote.replace('_', ' ')}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <div className="flex items-end gap-2">
         <div
           className="flex items-center gap-0.5 sm:gap-0 p-1 bg-[#C6C6C6] border-t-2 border-l-2 border-white border-b-2 border-r-2 border-[#555555] shadow-2xl pointer-events-auto max-w-[100vw] sm:max-w-none overflow-x-auto custom-scrollbar rounded-sm"
@@ -222,6 +271,32 @@ export const HotbarUI: React.FC<{ game: Game | null }> = ({ game }) => {
           <Smile size={24} className="text-white" />
           <span className="absolute -top-3 -right-2 text-xs font-bold text-white bg-black/50 px-1 py-0.5 rounded shadow">
             [H]
+          </span>
+        </button>
+        
+        {/* Separated Emote Button */}
+        <button
+          className="relative flex justify-center items-center flex-shrink-0 transition-all w-12 h-12 bg-[#8B8B8B] border-[3px] border-l-white border-t-white border-r-[#373737] border-b-[#373737] hover:bg-[#A0A0A0] shadow-xl pointer-events-auto"
+          onClick={(e) => {
+            e.stopPropagation();
+            const newState = !isEmoteWheelOpen;
+            setEmoteWheelOpen(newState);
+            if (newState && document.pointerLockElement) {
+              document.exitPointerLock();
+            }
+          }}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            const newState = !isEmoteWheelOpen;
+            setEmoteWheelOpen(newState);
+            if (newState && document.pointerLockElement) {
+              document.exitPointerLock();
+            }
+          }}
+        >
+          <span className="text-white font-bold text-lg leading-none">🧍</span>
+          <span className="absolute -top-3 -right-2 text-xs font-bold text-white bg-black/50 px-1 py-0.5 rounded shadow">
+            [J]
           </span>
         </button>
       </div>

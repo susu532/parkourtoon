@@ -511,6 +511,7 @@ export class EntityManager {
       offHandItem?: number;
       isBlocking?: boolean;
       currentEmoji?: string;
+      currentEmote?: string;
     },
   ) {
     const player = this.remotePlayers.get(id);
@@ -548,6 +549,12 @@ export class EntityManager {
       }
       if (data.currentEmoji !== undefined) {
         player.currentEmoji = data.currentEmoji;
+      }
+      if (data.currentEmote !== undefined) {
+        if (player.currentEmote !== data.currentEmote && data.currentEmote) {
+           player.emoteTimer = 0; // reset emote timer when new emote starts
+        }
+        player.currentEmote = data.currentEmote;
       }
       player.swingSpeed = data.swingSpeed || 15;
       player.isGrounded =

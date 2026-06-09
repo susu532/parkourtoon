@@ -11,6 +11,9 @@ const ShopUI = lazy(() =>
 const SettingsUI = lazy(() =>
   import("./SettingsUI").then((m) => ({ default: m.SettingsUI })),
 );
+const MobileLandscapeSettingsUI = lazy(() =>
+  import("./MobileLandscapeSettingsUI").then((m) => ({ default: m.MobileLandscapeSettingsUI })),
+);
 const PauseMenuUI = lazy(() =>
   import("./PauseMenuUI").then((m) => ({ default: m.PauseMenuUI })),
 );
@@ -146,13 +149,23 @@ export function GameMenus({
             />
           )}
           {isSettingsOpen && (
-            <SettingsUI
-              isOpen={isSettingsOpen}
-              onClose={() => {
-                setSettingsOpen(false);
-                setPauseMenuOpen(true);
-              }}
-            />
+            isMobile ? (
+              <MobileLandscapeSettingsUI
+                isOpen={isSettingsOpen}
+                onClose={() => {
+                  setSettingsOpen(false);
+                  setPauseMenuOpen(true);
+                }}
+              />
+            ) : (
+              <SettingsUI
+                isOpen={isSettingsOpen}
+                onClose={() => {
+                  setSettingsOpen(false);
+                  setPauseMenuOpen(true);
+                }}
+              />
+            )
           )}
           {isPauseMenuOpen && (
             <PauseMenuUI
