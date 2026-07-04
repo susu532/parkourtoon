@@ -2,14 +2,21 @@ import React from "react";
 import { useUIStore } from "../store/uiStore";
 import { motion, AnimatePresence } from "motion/react";
 import { Play } from "lucide-react";
+import { CrazyGamesManager } from "../game/CrazyGamesManager";
 
-export const TutorialUI: React.FC = () => {
+interface TutorialUIProps {
+  handleRelock?: () => void;
+}
+
+export const TutorialUI: React.FC<TutorialUIProps> = ({ handleRelock }) => {
   const showTutorialPopup = useUIStore((state) => state.showTutorialPopup);
   const isLaunchMenuOpen = useUIStore((state) => state.isLaunchMenuOpen);
   const setShowTutorialPopup = useUIStore((state) => state.setShowTutorialPopup);
 
   const handleClose = () => {
     setShowTutorialPopup(false);
+    CrazyGamesManager.gameplayStart();
+    handleRelock?.();
   };
 
   return (
@@ -21,7 +28,7 @@ export const TutorialUI: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 pointer-events-none"
+            className="absolute inset-0"
             onClick={handleClose}
           />
           

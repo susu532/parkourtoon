@@ -20,6 +20,7 @@ export default function App() {
     targetServer,
     showDebug,
     handleStart,
+    handleRelock,
     setGameKey,
     gameKey
   } = useGameEngine();
@@ -42,14 +43,16 @@ export default function App() {
         game={game} 
         isMobile={isMobile} 
         showDebug={showDebug} 
-        handleStart={handleStart} 
+        handleStart={handleStart}
+        handleRelock={handleRelock}
         setPauseMenuOpen={setPauseMenuOpen} 
       />
 
       <GameMenus 
         game={game} 
         targetServer={targetServer} 
-        handleStart={handleStart} 
+        handleStart={handleStart}
+        handleRelock={handleRelock}
         setGameKey={setGameKey} 
         isMobile={isMobile}
       />

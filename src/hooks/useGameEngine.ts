@@ -293,6 +293,7 @@ export function useGameEngine() {
           isLoadoutOpen: loadout,
           isEmojiWheelOpen: emojiWheel,
           isEmoteWheelOpen: emoteWheel,
+          showTutorialPopup: tutorial,
         } = state;
         const colorPickerOpen = useGameStore.getState().isFluidColorPickerOpen;
 
@@ -318,7 +319,8 @@ export function useGameEngine() {
           loadout ||
           colorPickerOpen ||
           emojiWheel ||
-          emoteWheel
+          emoteWheel ||
+          tutorial
         ) {
           state.setInventoryOpen(false);
           state.setShopOpen(false);
@@ -331,6 +333,10 @@ export function useGameEngine() {
           state.setLoadoutOpen(false);
           state.setEmojiWheelOpen(false);
           useGameStore.getState().setIsFluidColorPickerOpen(false);
+          if (tutorial) {
+            state.setShowTutorialPopup(false);
+            CrazyGamesManager.gameplayStart();
+          }
 
           if (!isMobile) {
             trySafeLock(true);
@@ -641,6 +647,39 @@ export function useGameEngine() {
     }
   };
 
+  // Called directly from close-button handlers (inventory, shop, tutorial, etc.).
+  // Skips the cooldown check because a button click IS a user gesture — the browser
+  // will grant the lock. handleStart() can't be used here because its canLock()
+  // cooldown fires within 1250ms of the last unlock (which happens when the UI opens).
+  const handleRelock = () => {
+    if (!game || isMobile) return;
+    if (document.pointerLockElement === document.body) return;
+    const isMapLoading = useGameStore.getState().isMapLoading;
+    if (isMapLoading) return;
+    const uiState = useUIStore.getState();
+    if (
+      uiState.isInventoryOpen ||
+      uiState.isShopOpen ||
+      uiState.isSettingsOpen ||
+      uiState.isPauseMenuOpen ||
+      uiState.isServerJoinOpen ||
+      uiState.isLoadoutOpen ||
+      uiState.isEmojiWheelOpen ||
+      uiState.isEmoteWheelOpen ||
+      uiState.showTutorialPopup ||
+      uiState.isLaunchMenuOpen ||
+      uiState.isChestOpen ||
+      useGameStore.getState().isFluidColorPickerOpen ||
+      useGameStore.getState().showLeaderboard
+    ) return;
+    try {
+      game.controls.lock();
+      audioManager.resume();
+    } catch (err) {
+      console.warn("Relock after close failed:", err);
+    }
+  };
+
   return {
     containerRef,
     game,
@@ -648,6 +687,7 @@ export function useGameEngine() {
     targetServer,
     showDebug,
     handleStart,
+    handleRelock,
     setGameKey,
     gameKey,
   };

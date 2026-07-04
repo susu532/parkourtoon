@@ -139,7 +139,7 @@ function FirstPersonEmojiOverlay({ game }: { game: Game | null }) {
   );
 }
 
-export function GameHUD({ game, isMobile, showDebug, setPauseMenuOpen }: any) {
+export function GameHUD({ game, isMobile, showDebug, setPauseMenuOpen, handleStart, handleRelock }: any) {
   const isHUDVisible = useUI((state) => state.isHUDVisible);
   const isLocked = useUI((state) => state.isLocked);
   const isTyping = useUI((state) => state.isTyping);
@@ -260,7 +260,7 @@ export function GameHUD({ game, isMobile, showDebug, setPauseMenuOpen }: any) {
           <DamageNumbers />
           <GameMessages />
           <LevelUpUI />
-          <TutorialUI />
+          <TutorialUI handleRelock={handleRelock} />
           <KillCelebrationUI />
         </>
       )}
