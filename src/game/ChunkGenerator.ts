@@ -7,14 +7,15 @@ import { buildHubCastles, generateHubTerrain } from "./generation/HubGenerator";
 import { getCastleBlock } from "./generation/SkyCastlesGenerator";
 import { getVillageBlock } from "./generation/SkyBridgeGenerator";
 import { getGiantMythicalShipBlock } from "./generation/ShipGenerator";
-import {
-  getSummerLabBlock,
-  getSummerLabChunkBounds,
-} from "./generation/SummerLabGenerator";
+import { getSummerLabBlock, generateSummerLabColumn } from "./generation/SummerLabGenerator";
+import { generateWaterParkColumn } from "./generation/WaterParkGenerator";
 import { generateSkyIslandTerrain } from "./generation/SkyIslandGenerator";
+import { getHappyIslandBlock, generateHappyIslandColumn } from "./generation/HappyIslandGenerator";
+import { getBackroomsBlock, generateBackroomsColumn } from "./generation/BackroomsGenerator";
 import * as THREE from "three";
 import { skycastlesBakedBlocks } from "./SkycastlesBakedBlocks";
 import { dungeonBakedBlocks } from "./DungeonBakedBlocks";
+import { getSummerLabPhase } from "./PhaseHelper";
 
 export async function generateChunkMethod(
   world: World,
@@ -24,6 +25,9 @@ export async function generateChunkMethod(
   const key = world.getChunkKey(cx, cz);
   world.generatingChunks.add(key);
   const chunk = new Chunk(cx, cz);
+  
+  const startEpoch = world.generationEpoch;
+  const summerLabPhase = getSummerLabPhase();
 
   let startTime = performance.now();
   let iterations = 0;
@@ -33,6 +37,9 @@ export async function generateChunkMethod(
       iterations++;
       if (iterations > 64 && performance.now() - startTime > 3) {
         await new Promise((resolve) => setTimeout(resolve, 0));
+        if (world.generationEpoch !== startEpoch) {
+          return chunk;
+        }
         startTime = performance.now();
         iterations = 0;
       }
@@ -56,27 +63,20 @@ export async function generateChunkMethod(
       // }
 
       if (world.isSummerLab) {
-        // max radius of islands generated is ~250.
-        if (distFromCenter <= 300) {
-          const bounds = (world as any)._summerLabBounds || ((world as any)._summerLabBounds = new Map());
-          const cKey = `${cx},${cz}`;
-          let chunkBounds = bounds.get(cKey);
-          if (chunkBounds === undefined) {
-             chunkBounds = getSummerLabChunkBounds(cx, cz) || null;
-             bounds.set(cKey, chunkBounds);
-          }
-          if (chunkBounds) {
-            for (let y = chunkBounds.minY - WORLD_Y_OFFSET; y <= chunkBounds.maxY - WORLD_Y_OFFSET; y++) {
-              if (y < 0 || y >= CHUNK_HEIGHT) continue;
-              const worldY = y + WORLD_Y_OFFSET;
-              const block = getSummerLabBlock(worldX, worldY, worldZ);
-              if (block !== 0) {
-                // 0 is AIR
-                chunk.setBlockFast(x, y, z, block);
-              }
-            }
-          }
+        if (summerLabPhase === 3) {
+          generateBackroomsColumn(chunk, x, z, worldX, worldZ);
+        } else if (summerLabPhase === 2) {
+          generateHappyIslandColumn(chunk, x, z, worldX, worldZ);
+        } else if (summerLabPhase === 1) {
+          generateWaterParkColumn(chunk, x, z, worldX, worldZ);
+        } else {
+          generateSummerLabColumn(chunk, x, z, worldX, worldZ);
         }
+        continue;
+      }
+
+      if (world.isHappyIsland) {
+        generateHappyIslandColumn(chunk, x, z, worldX, worldZ);
         continue;
       }
 
@@ -996,10 +996,7 @@ export async function generateChunkMethod(
                   y === tunnelY + 2 &&
                   Math.abs(localX) === 1
                 ) {
-                  blockToPlace =
-                    localX === 1
-                      ? BLOCK.TORCH_WALL_X_POS
-                      : BLOCK.TORCH_WALL_X_NEG;
+                  blockToPlace = localX === 1 ? BLOCK.TORCH_WALL_X_POS : BLOCK.TORCH_WALL_X_NEG;
                 }
               } else if (y === tunnelY - 1) {
                 blockToPlace = BLOCK.STONE;
@@ -1090,7 +1087,12 @@ export async function generateChunkMethod(
           // Explicit Chests near tree
           if ((worldX === 75 || worldX === -75) && worldZ === 1) {
             if (5 - WORLD_Y_OFFSET >= 0 && 5 - WORLD_Y_OFFSET < CHUNK_HEIGHT) {
-              chunk.setBlockFast(ix, 5 - WORLD_Y_OFFSET, iz, BLOCK.CHEST);
+              chunk.setBlockFast(
+                ix,
+                5 - WORLD_Y_OFFSET,
+                iz,
+                BLOCK.CHEST
+              );
             }
           }
 
@@ -1219,11 +1221,7 @@ export async function generateChunkMethod(
           lightLevel = Math.max(0, lightLevel - 1);
         }
 
-        if (
-          type === BLOCK.GLOWSTONE ||
-          type === BLOCK.LAVA ||
-          isAnyTorch(type)
-        ) {
+        if (type === BLOCK.GLOWSTONE || type === BLOCK.LAVA || isAnyTorch(type)) {
           lightLevel = 14;
         }
 
@@ -1249,6 +1247,11 @@ export async function generateChunkMethod(
         }
       }
     }
+  }
+
+  // If the world reset (e.g. game mode changed) while this chunk was generating asynchronously, discard it completely to prevent interpenetration
+  if (world.generationEpoch !== startEpoch) {
+     return chunk; // Return chunk but don't add to world.chunks. Note: don't delete from generatingChunks since it might be for a newer epoch!
   }
 
   world.chunks.set(key, chunk);

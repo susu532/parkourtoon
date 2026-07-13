@@ -255,6 +255,7 @@ const createPopupSlice: StateCreator<GameState, [], [], PopupSlice> = (
   levelUpPopups: [],
   addLevelUpPopup: (skill, level) => {
     const id = messageIdCounter++;
+    CrazyGamesManager.happyTime();
     set((state) => ({
       levelUpPopups: [...state.levelUpPopups, { id, skill, level }],
     }));

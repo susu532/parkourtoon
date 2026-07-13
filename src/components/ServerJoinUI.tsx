@@ -1,7 +1,7 @@
-import React from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { X, Server, Play, ShoppingCart } from "lucide-react";
-import { NPC } from "../game/NPC";
+import React from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { X, Server, Play, ShoppingCart } from 'lucide-react';
+import { NPC } from '../game/NPC';
 
 interface ServerJoinUIProps {
   isOpen: boolean;
@@ -12,31 +12,12 @@ interface ServerJoinUIProps {
   onOpenShop?: () => void;
 }
 
-export const ServerJoinUI: React.FC<ServerJoinUIProps> = ({
-  isOpen,
-  serverName = "skybridge",
-  npc,
-  onClose,
-  onJoin,
-  onOpenShop,
-}) => {
-  const displayName =
-    serverName === "skycastles"
-      ? "SkyCastles"
-      : serverName === "skyisland"
-        ? "Sky Island"
-        : serverName === "dungeondelver"
-          ? "Dungeon Delver"
-          : serverName === "battleroyale"
-            ? "Battle Royale"
-            : serverName === "summerlab"
-              ? "Summer Lab"
-              : "SkyBridge";
+export const ServerJoinUI: React.FC<ServerJoinUIProps> = ({ isOpen, serverName = 'skybridge', npc, onClose, onJoin, onOpenShop }) => {
+  const displayName = serverName === 'skycastles' ? 'SkyCastles' : serverName === 'happyisland' ? 'Happy Island' : serverName === 'skyisland' ? 'Sky Island' : serverName === 'dungeondelver' ? 'Dungeon Delver' : serverName === 'battleroyale' ? 'Battle Royale' : serverName === 'summerlab' ? 'Summer Lab' : 'SkyBridge';
   return (
     <AnimatePresence>
       {isOpen && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-6 pointer-events-auto"
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 pointer-events-auto"
           onPointerDown={(e) => {
             e.stopPropagation();
             if (e.target === e.currentTarget) onClose();
@@ -48,7 +29,7 @@ export const ServerJoinUI: React.FC<ServerJoinUIProps> = ({
             exit={{ opacity: 0 }}
             className="absolute inset-0 bg-black/40 pointer-events-none"
           />
-
+          
           <motion.div
             initial={{ scale: 0.95, opacity: 0, y: 10 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -61,33 +42,30 @@ export const ServerJoinUI: React.FC<ServerJoinUIProps> = ({
             </div>
 
             <h2 className="text-2xl font-bold text-white mb-2 leading-tight">
-              {displayName}
+               {displayName}
             </h2>
-
+            
             <div className="w-full flex flex-col gap-3 mt-4">
               <button
-                onClick={onJoin}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onJoin(); }}
                 className="w-full h-12 bg-white text-black hover:bg-[#FFFF55] font-bold rounded-xl transition-all flex items-center justify-center gap-2 group active:scale-95"
               >
                 <Play className="w-4 h-4 fill-current transition-transform group-hover:scale-110" />
                 JOIN GAME
               </button>
 
-              {npc &&
-                npc.shopItems &&
-                npc.shopItems.length > 0 &&
-                onOpenShop && (
-                  <button
-                    onClick={onOpenShop}
-                    className="w-full h-12 bg-[#373737] text-white hover:bg-[#444] border-2 border-[#555] font-bold rounded-xl transition-all flex items-center justify-center gap-2 group active:scale-95"
-                  >
-                    <ShoppingCart className="w-4 h-4 transition-transform group-hover:scale-110" />
-                    OPEN SHOP
-                  </button>
-                )}
+              {npc && npc.shopItems && npc.shopItems.length > 0 && onOpenShop && (
+                <button
+                  onClick={onOpenShop}
+                  className="w-full h-12 bg-[#373737] text-white hover:bg-[#444] border-2 border-[#555] font-bold rounded-xl transition-all flex items-center justify-center gap-2 group active:scale-95"
+                >
+                  <ShoppingCart className="w-4 h-4 transition-transform group-hover:scale-110" />
+                  OPEN SHOP
+                </button>
+              )}
             </div>
 
-            <button
+            <button 
               onClick={onClose}
               className="absolute top-4 right-4 text-white/20 hover:text-white transition-colors"
             >

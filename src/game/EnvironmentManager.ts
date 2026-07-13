@@ -3,7 +3,9 @@ import { Game } from "./Game";
 import { settingsManager } from "./Settings";
 import { getTerrainData } from "./TerrainGenerator";
 import { audioManager } from "./AudioManager";
+import { getSummerLabPhase } from "./PhaseHelper";
 
+import { useUI } from "../store/uiStore";
 import { ISystem } from "./ISystem";
 
 export class EnvironmentManager implements ISystem {
@@ -300,7 +302,7 @@ export class EnvironmentManager implements ISystem {
       this.clouds = new THREE.Group();
       const cloudColor = this.game.world.isSummerLab ? 0xffeef5 : 0xffffff;
       const cloudOpacity = this.game.world.isSummerLab ? 0.95 : 0.8;
-      const cloudMat = new THREE.MeshLambertMaterial({
+      const cloudMat = new THREE.MeshBasicMaterial({
         color: cloudColor,
         transparent: true,
         opacity: cloudOpacity,
@@ -487,7 +489,10 @@ export class EnvironmentManager implements ISystem {
     else this.weatherType = "clear";
 
     // Handle rain sound
-    if (showRain) {
+    const isHubOpen = useUI.getState().isHubPageOpen;
+    const shouldPlayRain = showRain && !isHubOpen;
+    
+    if (shouldPlayRain) {
       if (!audioManager.isAmbientPlaying("rain")) {
         audioManager.startAmbient("rain");
       }
@@ -675,9 +680,16 @@ export class EnvironmentManager implements ISystem {
       ? new THREE.Color(0x90b0c0)
       : new THREE.Color(0x5a6a7a);
 
+    const isBackrooms = this.game.world.isSummerLab && getSummerLabPhase() === 3;
+
     let skyColor;
     if (this.game.world.isDungeonDelver) {
       skyColor = new THREE.Color(0x000000);
+      if (this.clouds) this.clouds.visible = false;
+      if (this.sunMesh) this.sunMesh.visible = false;
+      if (this.moonMesh) this.moonMesh.visible = false;
+    } else if (isBackrooms) {
+      skyColor = new THREE.Color(0x050500); // very dark yellow/black
       if (this.clouds) this.clouds.visible = false;
       if (this.sunMesh) this.sunMesh.visible = false;
       if (this.moonMesh) this.moonMesh.visible = false;
@@ -737,6 +749,9 @@ export class EnvironmentManager implements ISystem {
         this.game.scene.fog.density = 0.15;
       } else if (this.game.world.isDungeonDelver) {
         this.game.scene.fog.density = 0.4;
+      } else if (isBackrooms) {
+        this.game.scene.fog.color.setHex(0x1a1a00); // Sickly dark yellow
+        this.game.scene.fog.density = 0.15; // Dark murky interior fog
       } else {
         const fogFactor = Math.max(0, -sunY * 2 + 0.5);
         // Volumetric fog effect: enhance fog density in the morning/evening for god ray simulation
@@ -840,6 +855,9 @@ export class EnvironmentManager implements ISystem {
       if (this.game.world.isDungeonDelver) {
         dirLight.intensity = 0.25; // Faint dungeon moonlight/ambient leak
         dirLight.castShadow = !isPerformance;
+      } else if (isBackrooms) {
+        dirLight.intensity = 0.0;
+        dirLight.castShadow = false;
       } else {
         dirLight.intensity = targetIntensity;
         dirLight.castShadow = !isPerformance;
@@ -853,6 +871,10 @@ export class EnvironmentManager implements ISystem {
         if (this.game.world.isDungeonDelver) {
           hemiLight.color.copy(new THREE.Color(0x222222));
           hemiLight.groundColor.copy(new THREE.Color(0x050505));
+          hemiLight.intensity = 0.05;
+        } else if (isBackrooms) {
+          hemiLight.color.copy(new THREE.Color(0x202011));
+          hemiLight.groundColor.copy(new THREE.Color(0x0a0a05));
           hemiLight.intensity = 0.05;
         } else {
           const upBlend = this.game.world.isSummerLab
@@ -890,6 +912,7 @@ export class EnvironmentManager implements ISystem {
         ambientIntensity = isDay ? ambientIntensity * 2.0 : 2.5; // Increased to brighten characters
       }
       if (this.game.world.isDungeonDelver) ambientIntensity = 0.01;
+      if (isBackrooms) ambientIntensity = 0.02;
 
       if (this.globalWeatherIntensity > 0) {
         const dropFactor = this.game.world.isSummerLab ? 0.8 : 0.6;
@@ -904,9 +927,9 @@ export class EnvironmentManager implements ISystem {
         ambientIntensity *= 0.3;
       }
       ambientLight.intensity = ambientIntensity;
-      if (this.game.world.isSummerLab) {
+      if (this.game.world.isSummerLab && !isBackrooms) {
         ambientLight.color.copy(skyColor).lerp(new THREE.Color(0xffffff), 0.3);
-      } else if (this.game.world.isDungeonDelver) {
+      } else if (this.game.world.isDungeonDelver || isBackrooms) {
         ambientLight.color.setHex(0xffffff);
       } else {
         ambientLight.color.copy(skyColor);
@@ -917,7 +940,38 @@ export class EnvironmentManager implements ISystem {
   destroy(): void {
     // Basic cleanup
     if (this.clouds) {
+      this.clouds.traverse((object) => {
+        if (object instanceof THREE.Mesh) {
+          object.geometry.dispose();
+          if (Array.isArray(object.material)) object.material.forEach(m => m.dispose());
+          else object.material.dispose();
+        }
+      });
       this.game.scene.remove(this.clouds);
+    }
+    
+    if (this.sunMesh) {
+      this.sunMesh.geometry.dispose();
+      (this.sunMesh.material as THREE.Material).dispose();
+      this.game.scene.remove(this.sunMesh);
+    }
+    
+    if (this.moonMesh) {
+      this.moonMesh.geometry.dispose();
+      (this.moonMesh.material as THREE.Material).dispose();
+      this.game.scene.remove(this.moonMesh);
+    }
+    
+    if (this.rainPoints) {
+      this.rainPoints.geometry.dispose();
+      (this.rainPoints.material as THREE.Material).dispose();
+      this.game.scene.remove(this.rainPoints);
+    }
+    
+    if (this.snowPoints) {
+      this.snowPoints.geometry.dispose();
+      (this.snowPoints.material as THREE.Material).dispose();
+      this.game.scene.remove(this.snowPoints);
     }
   }
 }

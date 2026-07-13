@@ -1,7 +1,8 @@
-import * as THREE from "three";
-import { ItemType } from "./Inventory";
-import { networkManager } from "./NetworkManager";
-import { settingsManager } from "./Settings";
+
+import * as THREE from 'three';
+import { ItemType } from './Inventory';
+import { networkManager } from './NetworkManager';
+import { settingsManager } from './Settings';
 
 const _hitMin = new THREE.Vector3();
 const _hitMax = new THREE.Vector3();
@@ -29,50 +30,58 @@ export class Minion {
   getHitbox(): THREE.Box3 {
     const width = 0.8;
     const pos = this.mesh.position;
-
-    _hitMin.set(pos.x - width / 2, pos.y - 0.5, pos.z - width / 2);
-    _hitMax.set(pos.x + width / 2, pos.y + 0.5, pos.z + width / 2);
-
+    
+    _hitMin.set(
+      pos.x - width / 2,
+      pos.y - 0.5,
+      pos.z - width / 2
+    );
+    _hitMax.set(
+      pos.x + width / 2,
+      pos.y + 0.5,
+      pos.z + width / 2
+    );
+    
     return _hitBox.set(_hitMin, _hitMax);
   }
 
   private createMesh(): THREE.Group {
     const isPerformance = settingsManager.getSettings().performanceMode;
     const group = new THREE.Group();
-
+    
     // Base/Platform
     const baseGeo = new THREE.BoxGeometry(0.8, 0.1, 0.8);
-    const baseMat = isPerformance
-      ? new THREE.MeshBasicMaterial({ color: 0x444444 })
-      : new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.9 });
+    const baseMat = isPerformance ?
+      new THREE.MeshBasicMaterial({ color: 0x444444 }) :
+      new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.9 });
     const base = new THREE.Mesh(baseGeo, baseMat);
     base.position.y = -0.45;
     group.add(base);
 
     // Body (Small armor stand like)
     const bodyGeo = new THREE.BoxGeometry(0.3, 0.5, 0.15);
-    const bodyMat = isPerformance
-      ? new THREE.MeshBasicMaterial({ color: 0x555555 })
-      : new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.9 });
+    const bodyMat = isPerformance ?
+      new THREE.MeshBasicMaterial({ color: 0x555555 }) :
+      new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.9 });
     const body = new THREE.Mesh(bodyGeo, bodyMat);
     body.position.y = -0.15;
     group.add(body);
 
     // Head
     const headGeo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
-    const headMat = isPerformance
-      ? new THREE.MeshBasicMaterial({ color: 0xaaaaaa })
-      : new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.9 });
+    const headMat = isPerformance ?
+      new THREE.MeshBasicMaterial({ color: 0xAAAAAA }) :
+      new THREE.MeshStandardMaterial({ color: 0xAAAAAA, roughness: 0.9 });
     const head = new THREE.Mesh(headGeo, headMat);
     head.position.y = 0.25;
     group.add(head);
 
     // Arms
     const armGeo = new THREE.BoxGeometry(0.1, 0.3, 0.1);
-    const armMat = isPerformance
-      ? new THREE.MeshBasicMaterial({ color: 0x555555 })
-      : new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.9 });
-
+    const armMat = isPerformance ?
+      new THREE.MeshBasicMaterial({ color: 0x555555 }) :
+      new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.9 });
+    
     const leftArm = new THREE.Mesh(armGeo, armMat);
     leftArm.position.set(-0.2, -0.15, 0);
     group.add(leftArm);
@@ -84,20 +93,16 @@ export class Minion {
 
     // Item they are "holding"
     const itemGeo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
-    const itemMat = isPerformance
-      ? new THREE.MeshBasicMaterial({ color: 0x888888 })
-      : new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.8 }); // Stone
+    const itemMat = isPerformance ?
+      new THREE.MeshBasicMaterial({ color: 0x888888 }) :
+      new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.8 }); // Stone
     const item = new THREE.Mesh(itemGeo, itemMat);
     item.position.set(0.2, -0.25, 0.25);
     group.add(item);
 
     // Name tag placeholder
     const tagGeo = new THREE.BoxGeometry(0.6, 0.15, 0.01);
-    const tagMat = new THREE.MeshBasicMaterial({
-      color: 0x000000,
-      transparent: true,
-      opacity: 0.5,
-    });
+    const tagMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.5 });
     const tag = new THREE.Mesh(tagGeo, tagMat);
     tag.position.y = 0.6;
     group.add(tag);
@@ -111,18 +116,18 @@ export class Minion {
 
     // Storage Bar Foreground
     const barGeo = new THREE.BoxGeometry(0.5, 0.05, 0.02);
-    const barMat = new THREE.MeshBasicMaterial({ color: 0x55ff55 });
+    const barMat = new THREE.MeshBasicMaterial({ color: 0x55FF55 });
     const bar = new THREE.Mesh(barGeo, barMat);
     bar.position.y = 0.8;
-    bar.name = "storageBar";
+    bar.name = 'storageBar';
     group.add(bar);
 
     // Full Tag
     const fullTagGeo = new THREE.BoxGeometry(0.4, 0.15, 0.01);
-    const fullTagMat = new THREE.MeshBasicMaterial({ color: 0xff5555 });
+    const fullTagMat = new THREE.MeshBasicMaterial({ color: 0xFF5555 });
     const fullTag = new THREE.Mesh(fullTagGeo, fullTagMat);
     fullTag.position.y = 1.0;
-    fullTag.name = "fullTag";
+    fullTag.name = 'fullTag';
     fullTag.visible = false;
     group.add(fullTag);
 
@@ -131,9 +136,9 @@ export class Minion {
 
   update(time: number) {
     const isPerformanceMode = settingsManager.getSettings().performanceMode;
-
+    
     // Update storage bar
-    const bar = this.mesh.getObjectByName("storageBar");
+    const bar = this.mesh.getObjectByName('storageBar');
     if (bar) {
       const scale = this.storage / this.maxStorage;
       bar.scale.x = Math.max(0.001, scale);
@@ -141,7 +146,7 @@ export class Minion {
     }
 
     // Update full tag
-    const fullTag = this.mesh.getObjectByName("fullTag");
+    const fullTag = this.mesh.getObjectByName('fullTag');
     if (fullTag) {
       fullTag.visible = this.storage >= this.maxStorage;
       if (fullTag.visible && !isPerformanceMode) {

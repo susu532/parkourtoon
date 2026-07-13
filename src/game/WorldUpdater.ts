@@ -37,23 +37,12 @@ export class WorldUpdater {
       distSq: number;
       inFrustum: boolean;
     }[] = [];
-    for (
-      let x = -this.world.renderDistance;
-      x <= this.world.renderDistance;
-      x++
-    ) {
-      for (
-        let z = -this.world.renderDistance;
-        z <= this.world.renderDistance;
-        z++
-      ) {
+    for (let x = -this.world.renderDistance; x <= this.world.renderDistance; x++) {
+      for (let z = -this.world.renderDistance; z <= this.world.renderDistance; z++) {
         const cx = pcx + x;
         const cz = pcz + z;
         const key = this.world.getChunkKey(cx, cz);
-        if (
-          !this.world.getChunk(cx, cz) &&
-          !this.world.generatingChunks.has(key)
-        ) {
+        if (!this.world.getChunk(cx, cz) && !this.world.generatingChunks.has(key)) {
           let inFrustum = true;
           if (camera) {
             const box = new THREE.Box3(
@@ -83,10 +72,13 @@ export class WorldUpdater {
     });
 
     let activeGenerations = this.world.generatingChunks.size;
+    const isMobileDevice = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    const maxGenConcurrent = isMobileDevice ? (isMapLoading ? 8 : 2) : (isMapLoading ? 32 : 2);
+    
     for (const { cx, cz } of chunksToGenerate) {
       // Limit concurrent chunk generation to prevent stutter
       if (
-        activeGenerations < (isMapLoading ? 32 : 2) &&
+        activeGenerations < maxGenConcurrent &&
         performance.now() - startTime < maxTimePerFrame
       ) {
         this.world.generateChunk(cx, cz);
@@ -100,13 +92,10 @@ export class WorldUpdater {
     for (const [key, chunk] of this.world.chunks.entries()) {
       const dx = Math.abs(chunk.x - pcx);
       const dz = Math.abs(chunk.z - pcz);
-      if (
-        dx > this.world.renderDistance + 1 ||
-        dz > this.world.renderDistance + 1
-      ) {
+      if (dx > this.world.renderDistance + 1 || dz > this.world.renderDistance + 1) {
         this.world.meshesToRemove.push({
-          mesh: chunk.mesh,
-          transparentMesh: chunk.transparentMesh,
+           mesh: chunk.mesh,
+           transparentMesh: chunk.transparentMesh
         });
         if (chunk.mesh) {
           this.world.scene.remove(chunk.mesh);
@@ -122,22 +111,8 @@ export class WorldUpdater {
     const chunksToMesh: { chunk: any; distSq: number; inFrustum: boolean }[] =
       [];
     let activeMeshing = 0;
-    
-    const isMobileDevice =
-      typeof window !== "undefined" &&
-      ("ontouchstart" in window || navigator.maxTouchPoints > 0);
-    const verticalViewDistance = isMobileDevice ? 48 : 128; // Limit vertical view
-
     for (const chunk of this.world.chunks.values()) {
       if (chunk.isMeshing) activeMeshing++;
-
-      // Remesh if the player moved vertically significantly
-      if (!chunk.needsUpdate && chunk.lastMeshedPlayerY !== undefined) {
-        if (Math.abs(chunk.lastMeshedPlayerY - playerPosition.y) > verticalViewDistance / 2) {
-          chunk.needsUpdate = true;
-        }
-      }
-
       if (chunk.needsUpdate && !chunk.isMeshing) {
         const dx = chunk.x - pcx;
         const dz = chunk.z - pcz;
@@ -170,15 +145,12 @@ export class WorldUpdater {
 
     for (const { chunk } of chunksToMesh) {
       // Limit concurrent meshing to prevent stutter, scaling down dramatically for mobile devices
-      let maxConcurrent = isMapLoading
-        ? 32
-        : chunksToMesh[0]?.inFrustum
-          ? 16
-          : 8;
+      const isMobileDevice = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+      let maxConcurrent = isMapLoading ? 32 : (chunksToMesh[0]?.inFrustum ? 16 : 8);
       if (isMobileDevice) {
         maxConcurrent = isMapLoading ? 8 : 2;
       }
-
+      
       if (
         activeMeshing < maxConcurrent &&
         performance.now() - startTime < maxTimePerFrame * 4
@@ -188,34 +160,22 @@ export class WorldUpdater {
         const chunkCache = new Array(9);
         for (let dx = -1; dx <= 1; dx++) {
           for (let dz = -1; dz <= 1; dz++) {
-            chunkCache[dx + 1 + (dz + 1) * 3] = this.world.getChunk(
-              cx + dx,
-              cz + dz,
-            );
+            chunkCache[dx + 1 + (dz + 1) * 3] = this.world.getChunk(cx + dx, cz + dz);
           }
         }
 
         const isPerformanceMode = settingsManager.getSettings().performanceMode;
-
-        const dataMinY = Math.max(0, Math.floor(playerPosition.y - WORLD_Y_OFFSET) - verticalViewDistance);
-        const dataMaxY = Math.min(CHUNK_HEIGHT - 1, Math.floor(playerPosition.y - WORLD_Y_OFFSET) + verticalViewDistance);
-
-        const startIndex = dataMinY * 256;
-        const endIndex = (dataMaxY + 1) * 256;
-
-        const blocksCopy = chunk.blocks.subarray(startIndex, endIndex).slice();
-        const lightCopy = chunk.light.subarray(startIndex, endIndex).slice();
+        
+        const blocksCopy = chunk.blocks.slice();
+        const lightCopy = chunk.light.slice();
         const neighborsBlocks: (Uint16Array | null)[] = [];
         const neighborsLight: (Uint8Array | null)[] = [];
-        const transferList: ArrayBuffer[] = [
-          blocksCopy.buffer,
-          lightCopy.buffer,
-        ];
+        const transferList: ArrayBuffer[] = [blocksCopy.buffer, lightCopy.buffer];
 
         for (const c of chunkCache) {
           if (c) {
-            const nbCopy = c.blocks.subarray(startIndex, endIndex).slice();
-            const nlCopy = c.light.subarray(startIndex, endIndex).slice();
+            const nbCopy = c.blocks.slice();
+            const nlCopy = c.light.slice();
             neighborsBlocks.push(nbCopy);
             neighborsLight.push(nlCopy);
             transferList.push(nbCopy.buffer, nlCopy.buffer);
@@ -227,35 +187,27 @@ export class WorldUpdater {
 
         chunk.isMeshing = true;
         chunk.needsUpdate = false;
-        chunk.lastMeshedPlayerY = playerPosition.y;
 
         const taskId = ++this.world.taskIdCounter;
         const promise = new Promise((resolve, reject) => {
-          this.world.pendingTasks.set(taskId, { resolve, reject, chunk });
+          this.world.pendingTasks.set(taskId, { resolve, reject, chunk, epoch: this.world.generationEpoch });
         });
 
         const worker = this.world.meshWorkers[this.world.nextWorkerIndex];
         this.world.nextWorkerIndex =
           (this.world.nextWorkerIndex + 1) % this.world.meshWorkers.length;
 
-        worker.postMessage(
-          {
-            taskId,
-            chunkX: chunk.x,
-            chunkZ: chunk.z,
-            blocks: blocksCopy,
-            light: lightCopy,
-            neighborsBlocks,
-            neighborsLight,
-            performanceMode: isPerformanceMode,
-            isDungeonDelver: this.world.isDungeonDelver,
-            playerY: playerPosition.y,
-            isMobile: isMobileDevice,
-            minY: dataMinY,
-            maxY: dataMaxY,
-          },
-          transferList,
-        );
+        worker.postMessage({
+          taskId,
+          chunkX: chunk.x,
+          chunkZ: chunk.z,
+          blocks: blocksCopy,
+          light: lightCopy,
+          neighborsBlocks,
+          neighborsLight,
+          performanceMode: isPerformanceMode,
+          isDungeonDelver: this.world.isDungeonDelver,
+        }, transferList);
 
         activeMeshing++;
       } else {

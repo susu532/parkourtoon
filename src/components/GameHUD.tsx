@@ -20,7 +20,6 @@ import { DamageOverlay } from "./DamageOverlay";
 import { DamageNumbers } from "./DamageNumbers";
 import { GameMessages } from "./GameMessages";
 import { LevelUpUI } from "./LevelUpUI";
-import { TutorialUI } from "./TutorialUI";
 import { HotbarUI } from "./HotbarUI";
 import { KillCelebrationUI } from "./KillCelebrationUI";
 import { FluidColorPicker } from "./FluidColorPicker";
@@ -61,9 +60,6 @@ function CrosshairTargetInfo({
             newType = "npc";
             newName = game.lastRaycast.npc.name;
             newId = game.lastRaycast.npc.id;
-          } else if (game.lastRaycast.block) {
-            newType = "block";
-            newName = ITEM_NAMES[game.lastRaycast.block.blockType] || "Block";
           }
         }
 
@@ -84,7 +80,7 @@ function CrosshairTargetInfo({
     return () => cancelAnimationFrame(afId);
   }, [game]);
 
-  if (!targetInfo.type || currentMode === "summerlab") return null;
+  if (!targetInfo.type) return null;
 
   return (
     <div className="absolute top-6 px-2 py-1 bg-black/80 text-[12px] text-white font-sans drop-shadow-[1px_1px_0_rgba(0,0,0,1)] whitespace-nowrap">
@@ -139,12 +135,14 @@ function FirstPersonEmojiOverlay({ game }: { game: Game | null }) {
   );
 }
 
-export function GameHUD({ game, isMobile, showDebug, setPauseMenuOpen, handleStart, handleRelock }: any) {
+export function GameHUD({ game, isMobile, showDebug, setPauseMenuOpen }: any) {
   const isHUDVisible = useUI((state) => state.isHUDVisible);
   const isLocked = useUI((state) => state.isLocked);
   const isTyping = useUI((state) => state.isTyping);
   const setTyping = useUI((state) => state.setTyping);
   const currentMode = useGameStore((state) => state.currentMode);
+
+  const isInventoryOpen = useUI((state) => state.isInventoryOpen);
 
   return (
     <>
@@ -260,13 +258,12 @@ export function GameHUD({ game, isMobile, showDebug, setPauseMenuOpen, handleSta
           <DamageNumbers />
           <GameMessages />
           <LevelUpUI />
-          <TutorialUI handleRelock={handleRelock} />
           <KillCelebrationUI />
         </>
       )}
 
       {/* Toolbar */}
-      {isHUDVisible && currentMode !== "hub" && <HotbarUI game={game} />}
+      {isHUDVisible && currentMode !== "hub" && !isInventoryOpen && <HotbarUI game={game} />}
     </>
   );
 }

@@ -66,8 +66,8 @@ export function updatePlayer(player: Player, delta: number) {
     player.cameraPitch -= player.mouseDeltaY * 0.002 * factor * invertFactor;
 
     // Clamp pitch - look up/down limits
-    const limitUp = Math.PI * 0.4; // ~72 degrees
-    const limitDown = Math.PI * 0.48; // ~86 degrees
+    const limitUp = Math.PI * 0.495; // Almost 90 degrees
+    const limitDown = Math.PI * 0.495; // Almost 90 degrees
     player.cameraPitch = Math.max(
       -limitDown,
       Math.min(limitUp, player.cameraPitch),
@@ -148,29 +148,31 @@ export function updatePlayer(player: Player, delta: number) {
   const isHose =
     activeTool?.type === ItemType.FLUID_CHOCOLATE_HOSE ||
     activeTool?.type === ItemType.WASHING_HOSE;
+  const isSpiderGloves = activeTool?.type === ItemType.SPIDER_GLOVES;
+
+  const direction = _rayDir
+    .set(
+      -Math.sin(player.cameraYaw) * Math.cos(player.cameraPitch),
+      Math.sin(player.cameraPitch),
+      -Math.cos(player.cameraYaw) * Math.cos(player.cameraPitch),
+    )
+    .normalize();
+  const rayOrigin = _rayOrigin.copy(player.playerHeadPos);
+  const hitResult = player.world.raycast(rayOrigin, direction, 5);
 
   // Handle Mining
   if (
     player.isLeftMouseDown &&
     !player.isDead &&
     !player.isSpectator &&
-    !isHose
+    !isHose &&
+    !isSpiderGloves
   ) {
     if (player.currentEmote) player.currentEmote = undefined;
     if (!player.isMining && !player.isFlying) {
       // It should have been started by onMouseDown, if not, wait for another click.
       // In survival we don't auto-start mining immediately on drag unless we are still holding left click after a block breaks.
     }
-
-    const direction = _rayDir
-      .set(
-        -Math.sin(player.cameraYaw) * Math.cos(player.cameraPitch),
-        Math.sin(player.cameraPitch),
-        -Math.cos(player.cameraYaw) * Math.cos(player.cameraPitch),
-      )
-      .normalize();
-    const rayOrigin = _rayOrigin.copy(player.playerHeadPos);
-    const hitResult = player.world.raycast(rayOrigin, direction, 5);
 
     if (hitResult.hit && hitResult.blockPos) {
       const blockType = player.world.getBlock(
@@ -254,16 +256,7 @@ export function updatePlayer(player: Player, delta: number) {
       player.miningTarget = null;
       if (player.breakingMesh) player.breakingMesh.visible = false;
     } else {
-      const direction = _rayDir
-        .set(
-          -Math.sin(player.cameraYaw) * Math.cos(player.cameraPitch),
-          Math.sin(player.cameraPitch),
-          -Math.cos(player.cameraYaw) * Math.cos(player.cameraPitch),
-        )
-        .normalize();
-      const rayOrigin = _rayOrigin.copy(player.playerHeadPos);
-      const hitResult = player.world.raycast(rayOrigin, direction, 5);
-
+      // Use the hitResult calculated earlier in the function
       if (
         hitResult.hit &&
         hitResult.blockPos &&
@@ -440,7 +433,8 @@ export function updatePlayer(player: Player, delta: number) {
         (itemTypeNum >= 460 && itemTypeNum <= 472) ||
         itemTypeNum === 54 ||
         itemTypeNum === ItemType.FLUID_CHOCOLATE_HOSE ||
-        itemTypeNum === ItemType.WASHING_HOSE;
+        itemTypeNum === ItemType.WASHING_HOSE ||
+        itemTypeNum === ItemType.SPIDER_GLOVES;
       const isFood = itemTypeNum >= 456 && itemTypeNum <= 459;
       const isMaterial =
         itemTypeNum === 13 ||
@@ -502,6 +496,10 @@ export function updatePlayer(player: Player, delta: number) {
           player.fpHeldItemModel.scale.set(0.85, 0.85, 0.85); // Slightly smaller scale
           // Point outward slightly down, slight inward tilt for hose look
           player.fpHeldItemModel.rotation.set(-Math.PI / 2 + 0.3, 0.2, 0.1);
+        } else if (itemTypeNum === ItemType.SPIDER_GLOVES) {
+          player.fpHeldItemModel.position.set(0.1, -0.1, -0.1); // closer to screen, moved down a bit
+          player.fpHeldItemModel.scale.set(0.2, 0.2, 0.2);
+          player.fpHeldItemModel.rotation.set(-Math.PI / 2 + 0.2, Math.PI / 16, 0);
         } else {
           // Standard tool position
           player.fpHeldItemModel.position.set(0.55, -0.4, -0.75);
@@ -667,7 +665,6 @@ export function updatePlayer(player: Player, delta: number) {
 
   // Animate character model
   player.renderer.animate(delta);
-  player.renderer.update(delta, player.isGliding);
 
   // Smooth camera step offsets
   if (player.cameraYOffset < 0) {
@@ -801,6 +798,7 @@ export function updatePlayer(player: Player, delta: number) {
 
     const equipItem = player.inventory.slots[player.hotbarIndex];
     const isBow = equipItem?.type === ItemType.BOW;
+    const isGrappling = equipItem?.type === ItemType.SPIDER_GLOVES && player.grapplePoint != null;
 
     if (isBow && player.inputController.bowChargeStart > 0) {
       // Charging animation
@@ -821,6 +819,14 @@ export function updatePlayer(player: Player, delta: number) {
         swingPosX += rumble;
         swingPosY += rumble;
       }
+    } else if (isGrappling) {
+      // Point fixed forward while grappling, rigid arm
+      swingRotX = 0;
+      swingRotY = 0;
+      swingRotZ = 0;
+      swingPosX = 0;
+      swingPosY = 0;
+      swingPosZ = 0;
     } else if (player.isSwinging) {
       // Minecraft-like snappy swing
       const t = player.swingTimer / Math.PI;
@@ -833,12 +839,39 @@ export function updatePlayer(player: Player, delta: number) {
       swingPosX = -swingProgress * 0.2;
       swingPosY = -swingProgress * 0.1;
       swingPosZ = swingProgress * 0.1;
+    } else if (player.currentEmote && !isMoving && !player.isFlying && !player.isSwimming) {
+      const et = player.emoteTimer;
+      if (player.currentEmote === "wave") {
+        swingRotZ += Math.sin(et * 15) * 0.5 + 0.5;
+        swingRotX -= 0.5;
+        swingPosY += 0.2;
+      } else if (player.currentEmote === "dance") {
+        swingPosX += Math.sin(et * 5) * 0.2;
+        swingPosY += Math.cos(et * 5) * 0.2;
+        swingRotZ += Math.sin(et * 10) * 0.5;
+      } else if (player.currentEmote === "cheer") {
+        swingPosY += Math.abs(Math.sin(et * 8)) * 0.3;
+        swingRotX -= Math.abs(Math.sin(et * 8)) * 0.5 + 0.2;
+      } else if (player.currentEmote === "floss") {
+        swingPosX += Math.sin(et * 10) * 0.4;
+        swingRotZ += Math.sin(et * 10) * 0.4;
+      } else if (player.currentEmote === "zombie") {
+        swingRotX -= Math.PI / 2;
+        swingPosZ -= 0.3;
+        swingPosY += 0.2;
+        swingRotZ += Math.sin(et * 2) * 0.1;
+      } else if (player.currentEmote === "headbang") {
+        swingRotX += Math.sin(et * 12) * 0.3;
+        swingPosY += Math.min(0, Math.sin(et * 12)) * 0.2;
+      }
     }
 
+    const isSpiderGloves = equipItem?.type === ItemType.SPIDER_GLOVES;
+    
     // Idle breathing and walk bobbing (more natural movement)
-    const idleBobY = Math.sin(performance.now() * 0.002) * 0.01;
-    const walkBobX = isMoving ? Math.cos(player.walkCycle) * 0.04 : 0;
-    const walkBobY = isMoving ? Math.sin(player.walkCycle * 2) * 0.04 : 0;
+    const idleBobY = isSpiderGloves ? 0 : Math.sin(performance.now() * 0.002) * 0.01;
+    const walkBobX = (isMoving && !isSpiderGloves) ? Math.cos(player.walkCycle) * 0.04 : 0;
+    const walkBobY = (isMoving && !isSpiderGloves) ? Math.sin(player.walkCycle * 2) * 0.04 : 0;
 
     // Apply rotations
     player.fpArmGroup.rotation.x = THREE.MathUtils.lerp(
@@ -846,26 +879,29 @@ export function updatePlayer(player: Player, delta: number) {
       swingRotX,
       0.25,
     );
+    const swayX = isSpiderGloves ? 0 : player.lookSwayX;
+    const swayY = isSpiderGloves ? 0 : player.lookSwayY;
+
     player.fpArmGroup.rotation.y = THREE.MathUtils.lerp(
       player.fpArmGroup.rotation.y,
-      swingRotY + player.lookSwayX * 0.8,
+      swingRotY + swayX * 0.8,
       0.25,
     );
     player.fpArmGroup.rotation.z = THREE.MathUtils.lerp(
       player.fpArmGroup.rotation.z,
-      swingRotZ + player.lookSwayX * 0.3,
+      swingRotZ + swayX * 0.3,
       0.25,
     );
 
     // Apply positions (including sway and bob)
     player.fpArmGroup.position.x = THREE.MathUtils.lerp(
       player.fpArmGroup.position.x,
-      swingPosX - player.lookSwayX * 2.0 + walkBobX,
+      swingPosX - swayX * 2.0 + walkBobX,
       0.2,
     );
     player.fpArmGroup.position.y = THREE.MathUtils.lerp(
       player.fpArmGroup.position.y,
-      swingPosY + player.lookSwayY * 1.5 + walkBobY + idleBobY,
+      swingPosY + swayY * 1.5 + walkBobY + idleBobY,
       0.2,
     );
     player.fpArmGroup.position.z = THREE.MathUtils.lerp(
@@ -942,6 +978,7 @@ export function updatePlayer(player: Player, delta: number) {
     maxHealth: skyBridgeManager.effectiveStats.maxHealth || 100,
     currentEmoji: player.currentEmoji,
     currentEmote: player.currentEmote,
+    grapplePoint: player.grapplePoint ? { x: player.grapplePoint.x, y: player.grapplePoint.y, z: player.grapplePoint.z } : null,
   };
 
   const stateHash = JSON.stringify(currentState);
@@ -976,4 +1013,10 @@ export function updatePlayer(player: Player, delta: number) {
       player.lastSyncEuler.copy(player.syncEuler);
     }
   }
+
+  // Ensure matrices are updated so world positions like grapple offset don't lag behind the camera/arms
+  player.camera.updateMatrixWorld(true);
+  player.modelGroup.updateMatrixWorld(true);
+  player.renderer.update(delta, player.isGliding);
+  player.renderer.updateGrappleLine();
 }

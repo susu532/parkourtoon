@@ -4,11 +4,11 @@ import { ATLAS_TILES } from "./TextureAtlas";
 import { settingsManager } from "./Settings";
 
 export class MobRenderer {
-  mob: Mob;
+    mob: Mob;
 
-  constructor(mob: Mob) {
-    this.mob = mob;
-  }
+    constructor(mob: Mob) {
+        this.mob = mob;
+    }
 
   getMobUVs(tx: number, ty: number) {
     const size = 1 / ATLAS_TILES;
@@ -160,15 +160,11 @@ export class MobRenderer {
 
     // Always create eyes and mouth for humanoid mobs so they have a face
     const eyeGeo = new THREE.BoxGeometry(0.12, 0.12, 0.05);
-    const eyeMat = isPerformance
-      ? new THREE.MeshBasicMaterial({
-          color: isMorvane ? 0xff0000 : isSkeleton ? 0x222222 : 0x000000,
-        })
-      : new THREE.MeshStandardMaterial({
-          color: isMorvane ? 0xff0000 : isSkeleton ? 0x222222 : 0x000000,
-          emissive: isMorvane ? 0xff0000 : 0x000000,
-          emissiveIntensity: isMorvane ? 2 : 1,
-        });
+    const eyeMat = new THREE.MeshStandardMaterial({
+      color: isMorvane ? 0xff0000 : isSkeleton ? 0x222222 : 0x000000,
+      emissive: isMorvane ? 0xff0000 : 0x000000,
+      emissiveIntensity: isMorvane ? 2 : 1,
+    });
     const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
     leftEye.position.set(-0.15, 0.3, 0.26);
     this.mob.head.add(leftEye);
@@ -282,9 +278,7 @@ export class MobRenderer {
     }
 
     // Always create eyes and mouth for creepers so they have a face
-    const faceMat = isPerformance
-      ? new THREE.MeshBasicMaterial({ color: 0x000000 })
-      : new THREE.MeshStandardMaterial({ color: 0x000000 });
+    const faceMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
     const eyeGeo = new THREE.BoxGeometry(0.12, 0.12, 0.05);
     const leftEye = new THREE.Mesh(eyeGeo, faceMat);
     leftEye.position.set(-0.12, 0.3, 0.26);
@@ -376,12 +370,10 @@ export class MobRenderer {
 
     // Add Tail
     const tailGeo = new THREE.BoxGeometry(0.1, 0.4, 0.1);
-    const tailMat = isPerformance
-      ? new THREE.MeshBasicMaterial({ color: legColor })
-      : new THREE.MeshStandardMaterial({
-          color: legColor,
-          roughness: 0.9,
-        });
+    const tailMat = new THREE.MeshStandardMaterial({
+      color: legColor,
+      roughness: 0.9,
+    });
     this.mob.tail = new THREE.Mesh(tailGeo, tailMat);
     this.mob.tail.position.set(0, 0.2, -bodyDepth / 2);
     this.mob.tail.rotation.x = -0.5;
@@ -418,9 +410,7 @@ export class MobRenderer {
       // Add 3D snout for depth even with textures
       if (this.mob.type === MobType.COW) {
         const snoutColor = 0x8b6b4a;
-        const snoutMat = isPerformance
-          ? new THREE.MeshBasicMaterial({ color: snoutColor })
-          : new THREE.MeshStandardMaterial({ color: snoutColor });
+        const snoutMat = new THREE.MeshStandardMaterial({ color: snoutColor });
         const snoutGeo = new THREE.BoxGeometry(0.25, 0.18, 0.12);
         const snout = new THREE.Mesh(snoutGeo, snoutMat);
         snout.position.set(0, 0.0, 0.25);
@@ -429,9 +419,7 @@ export class MobRenderer {
       }
 
       if (this.mob.type === MobType.COW) {
-        const hornMat = isPerformance
-          ? new THREE.MeshBasicMaterial({ color: 0xdddddd })
-          : new THREE.MeshStandardMaterial({ color: 0xdddddd });
+        const hornMat = new THREE.MeshStandardMaterial({ color: 0xdddddd });
         const hornGeo = new THREE.BoxGeometry(0.1, 0.2, 0.1);
         const leftHorn = new THREE.Mesh(hornGeo, hornMat);
         leftHorn.position.set(-0.25, 0.3, 0.1);
@@ -442,9 +430,7 @@ export class MobRenderer {
       }
     } else {
       const eyeGeo = new THREE.BoxGeometry(0.08, 0.08, 0.05);
-      const eyeMat = isPerformance
-        ? new THREE.MeshBasicMaterial({ color: 0x111111 })
-        : new THREE.MeshStandardMaterial({ color: 0x111111 });
+      const eyeMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
       const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
       leftEye.position.set(-0.15, 0.15, 0.41);
       this.mob.head.add(leftEye);
@@ -454,9 +440,7 @@ export class MobRenderer {
 
       if (this.mob.type === MobType.COW) {
         const snoutColor = 0x332211;
-        const snoutMat = isPerformance
-          ? new THREE.MeshBasicMaterial({ color: snoutColor })
-          : new THREE.MeshStandardMaterial({ color: snoutColor });
+        const snoutMat = new THREE.MeshStandardMaterial({ color: snoutColor });
         const snoutGeo = new THREE.BoxGeometry(0.2, 0.15, 0.1);
         const snout = new THREE.Mesh(snoutGeo, snoutMat);
         snout.position.set(0, 0.0, 0.45);
@@ -464,9 +448,7 @@ export class MobRenderer {
       }
 
       if (this.mob.type === MobType.COW) {
-        const hornMat = isPerformance
-          ? new THREE.MeshBasicMaterial({ color: 0xdddddd })
-          : new THREE.MeshStandardMaterial({ color: 0xdddddd });
+        const hornMat = new THREE.MeshStandardMaterial({ color: 0xdddddd });
         const hornGeo = new THREE.BoxGeometry(0.05, 0.15, 0.05);
         const leftHorn = new THREE.Mesh(hornGeo, hornMat);
         leftHorn.position.set(-0.2, 0.35, 0.2);
@@ -533,9 +515,7 @@ export class MobRenderer {
 
     if (!this.mob.textureAtlas) {
       const eyeGeo = new THREE.BoxGeometry(0.1, 0.1, 0.05);
-      const eyeMat = isPerformance
-        ? new THREE.MeshBasicMaterial({ color: 0x003300 })
-        : new THREE.MeshStandardMaterial({ color: 0x003300 });
+      const eyeMat = new THREE.MeshStandardMaterial({ color: 0x003300 });
       const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
       leftEye.position.set(-0.2, 0.5, 0.41);
       group.add(leftEye);
@@ -593,8 +573,7 @@ export class MobRenderer {
         this.mob.leftArm.rotation.x = Math.sin(time * 2.0) * 0.5 + 0.2;
         this.mob.rightArm.rotation.x = Math.cos(time * 2.0) * 0.5 + 0.2;
         if (this.mob.leftArm2 && this.mob.rightArm2) {
-          this.mob.leftArm2.rotation.x =
-            Math.sin(time * 2.0 + Math.PI) * 0.5 - 0.2;
+          this.mob.leftArm2.rotation.x = Math.sin(time * 2.0 + Math.PI) * 0.5 - 0.2;
           this.mob.rightArm2.rotation.x =
             Math.cos(time * 2.0 + Math.PI) * 0.5 - 0.2;
 
@@ -625,4 +604,5 @@ export class MobRenderer {
       this.mob.legs[3].rotation.x = swing;
     }
   }
+
 }

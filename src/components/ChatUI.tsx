@@ -163,7 +163,7 @@ export const ChatUI = React.memo(function ChatUI({
   }, [visibleMessages, showFullChat]);
 
   return (
-    <div className="absolute left-4 top-16 md:top-20 md:left-6 lg:top-24 lg:left-8 z-[60] w-[92vw] sm:w-[48vw] md:w-[44vw] lg:w-[38vw] xl:w-[34vw] min-w-[280px] max-w-[560px] flex flex-col gap-1 pointer-events-none transition-all">
+    <div className="absolute left-4 top-16 md:top-20 md:left-6 lg:top-24 lg:left-8 z-[60] w-[92vw] sm:w-[48vw] md:w-[44vw] lg:w-[38vw] xl:w-[34vw] min-w-[280px] max-w-[560px] flex flex-col gap-1 pointer-events-none transition-all [@media(orientation:landscape)_and_(max-height:500px)]:scale-[0.6] [@media(orientation:landscape)_and_(max-height:500px)]:origin-top-left">
       <div
         ref={chatContainerRef}
         onScroll={handleScroll}
@@ -191,7 +191,7 @@ export const ChatUI = React.memo(function ChatUI({
             return (
               <div
                 key={msg.id}
-                className="text-[13px] sm:text-[14px] md:text-[15px] lg:text-[16px] text-white drop-shadow-[1px_1px_0_rgba(0,0,0,1)] bg-black/0 px-1 py-0.5 rounded w-fit max-w-full break-words font-sans selection:bg-white/30"
+                className={`text-[13px] sm:text-[14px] md:text-[15px] lg:text-[16px] text-white drop-shadow-[1px_1px_0_rgba(0,0,0,1)] bg-black/0 px-1 py-0.5 rounded w-fit max-w-full break-words font-sans selection:bg-white/30 ${showFullChat ? 'select-text' : 'select-none'}`}
               >
                 <span className={`font-bold ${senderColor}`}>
                   {msg.sender}:{" "}
@@ -204,7 +204,10 @@ export const ChatUI = React.memo(function ChatUI({
       </div>
 
       {isTyping && (
-        <div className="pointer-events-auto bg-black/50 p-1 flex items-center border border-white/10">
+        <div 
+          className="pointer-events-auto bg-black/50 p-1 flex items-center border border-white/10"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
           <input
             ref={inputRef}
             type="text"
@@ -214,10 +217,6 @@ export const ChatUI = React.memo(function ChatUI({
             className="bg-transparent text-white outline-none w-full font-sans text-[13px] sm:text-[14px] md:text-[15px]"
             placeholder=""
             maxLength={100}
-            onBlur={() => {
-              // Small delay to allow Enter key to process before unmounting
-              setTimeout(() => setIsTyping(false), 100);
-            }}
           />
         </div>
       )}

@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 
 export function DungeonDelverTitleUI() {
   return (
@@ -11,9 +11,9 @@ export function DungeonDelverTitleUI() {
           margin: 0,
         }}
       >
-        <span
-          style={{
-            color: "#FFFF55",
+        <span 
+          style={{ 
+            color: "#FFFF55", 
             textShadow: "1.5px 1.5px 0px #222200, 2px 2px 4px rgba(0,0,0,0.8)",
             letterSpacing: "0.08em",
             fontWeight: "bold",
@@ -22,8 +22,8 @@ export function DungeonDelverTitleUI() {
         >
           starplex.io
         </span>
-        <span
-          style={{
+        <span 
+          style={{ 
             color: "#FFAAAA",
             textShadow: "1.5px 1.5px 0px #220000, 2px 2px 4px rgba(0,0,0,0.8)",
             fontWeight: "bold",
@@ -34,9 +34,7 @@ export function DungeonDelverTitleUI() {
         </span>
         <span
           style={{
-            background: "linear-gradient(to bottom, #FF5555, #D01111)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
+            color: "#FF5555",
             WebkitTextStroke: "1px rgba(60,0,0,0.8)",
             letterSpacing: "0.12em",
             filter: `

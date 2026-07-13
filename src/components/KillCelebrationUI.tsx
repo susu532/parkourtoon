@@ -1,6 +1,6 @@
-import React from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { useGameStore } from "../store/gameStore";
+import React from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { useGameStore } from '../store/gameStore';
 
 export const KillCelebrationUI: React.FC = () => {
   const killCelebrations = useGameStore((state) => state.killCelebrations);
@@ -17,7 +17,7 @@ export const KillCelebrationUI: React.FC = () => {
             transition={{
               type: "spring",
               stiffness: 450,
-              damping: 25,
+              damping: 25
             }}
             className="flex items-center gap-2 px-3 py-1 bg-black/80 border border-[#55FF55]/40 rounded-md backdrop-blur-sm shadow-md mc-font"
           >
@@ -26,10 +26,7 @@ export const KillCelebrationUI: React.FC = () => {
               {kill.isPlayer ? "PLAYER KILLED!" : "MOB DEFEATED!"}
             </span>
             <span className="text-xs sm:text-sm text-gray-300 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] mc-text-shadow whitespace-nowrap">
-              defeated{" "}
-              <span className="font-bold text-[#FFFF55]">
-                {kill.victimName}
-              </span>
+              defeated <span className="font-bold text-[#FFFF55]">{kill.victimName}</span>
             </span>
           </motion.div>
         ))}

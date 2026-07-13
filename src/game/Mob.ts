@@ -28,6 +28,7 @@ import { ItemType } from "./Inventory";
 import { audioManager } from "./AudioManager";
 import { settingsManager } from "./Settings";
 
+
 export { MobTypes as MobType } from "./Constants";
 
 export class Mob {
@@ -45,28 +46,6 @@ export class Mob {
   hasInitialPosition: boolean = false;
   lastNetworkUpdate: number = Date.now();
   textureAtlas: THREE.Texture | null = null;
-
-  destroy() {
-    if (this.group) {
-      this.group.traverse((child) => {
-        if (child instanceof THREE.Mesh) {
-          if (child.geometry) {
-            child.geometry.dispose();
-          }
-          if (child.material) {
-            if (Array.isArray(child.material)) {
-              child.material.forEach((m) => m.dispose());
-            } else {
-              child.material.dispose();
-            }
-          }
-        }
-      });
-      if (this.group.parent) {
-        this.group.parent.remove(this.group);
-      }
-    }
-  }
 
   velocity = new THREE.Vector3();
   targetPosition: THREE.Vector3 | null = null;
@@ -283,23 +262,16 @@ export class Mob {
       // Decay the prediction offset as server syncs up
       const predDecay = 1.0 - Math.exp(-2.5 * delta); // Slower natural decay
       this.predictionOffset.lerp(_zeroVec, predDecay);
-      if (this.predictionOffset.lengthSq() < 0.01)
-        this.predictionOffset.set(0, 0, 0);
+      if (this.predictionOffset.lengthSq() < 0.01) this.predictionOffset.set(0, 0, 0);
 
       const decay = 1.0 - Math.exp(-10 * delta); // Slower snap-back so knockback prediction feels good
       this.visualOffset.lerp(_zeroVec, decay);
       this.damageRotate = THREE.MathUtils.lerp(this.damageRotate, 0, decay);
 
-      this.group.position
-        .copy(this.position)
-        .add(this.visualOffset)
-        .add(this.predictionOffset);
+      this.group.position.copy(this.position).add(this.visualOffset).add(this.predictionOffset);
 
       // Face movement direction
-      const moveDir = _tempVec1.subVectors(
-        this.targetPosition,
-        this.lastNetPos,
-      );
+      const moveDir = _tempVec1.subVectors(this.targetPosition, this.lastNetPos);
       if (moveDir.length() > 0.001) {
         const targetRotation = Math.atan2(moveDir.x, moveDir.z);
 
@@ -333,7 +305,10 @@ export class Mob {
             _tempVec1.copy(playerPos);
             const localPlayerPos = this.group.worldToLocal(_tempVec1);
             const targetHeadRot = new THREE.Euler().setFromQuaternion(
-              _tempQuat.setFromUnitVectors(_zAxis, localPlayerPos.normalize()),
+              _tempQuat.setFromUnitVectors(
+                _zAxis,
+                localPlayerPos.normalize(),
+              ),
             );
 
             this.head.rotation.x = THREE.MathUtils.lerp(
@@ -513,9 +488,7 @@ export class Mob {
 
         if (this.wanderAngle === -2) {
           // Staring at player
-          const dir = _tempVec3
-            .subVectors(playerPos, this.position)
-            .normalize();
+          const dir = _tempVec3.subVectors(playerPos, this.position).normalize();
           const targetRotation = Math.atan2(dir.x, dir.z);
           this.group.rotation.y = THREE.MathUtils.lerp(
             this.group.rotation.y,
@@ -550,7 +523,10 @@ export class Mob {
           Math.sin(Date.now() * 0.01) * 0.2,
           0.1,
         );
-      } else if (this.isPassive && (dist < 20 || this.wanderAngle === -2)) {
+      } else if (
+        this.isPassive &&
+        (dist < 20 || this.wanderAngle === -2)
+      ) {
         // Look at player
         _tempVec1.copy(playerPos);
         const localPlayerPos = this.group.worldToLocal(_tempVec1);
@@ -678,16 +654,12 @@ export class Mob {
           const arrowGroup = new THREE.Group();
           // Shaft
           const shaftGeo = new THREE.BoxGeometry(0.05, 0.05, 0.6);
-          const shaftMat = isPerformance
-            ? new THREE.MeshBasicMaterial({ color: 0x8b4513 })
-            : new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+          const shaftMat = isPerformance ? new THREE.MeshBasicMaterial({ color: 0x8b4513 }) : new THREE.MeshStandardMaterial({ color: 0x8b4513 });
           const shaft = new THREE.Mesh(shaftGeo, shaftMat);
           arrowGroup.add(shaft);
           // Head
           const headGeo = new THREE.BoxGeometry(0.08, 0.08, 0.1);
-          const headMat = isPerformance
-            ? new THREE.MeshBasicMaterial({ color: 0xaabbcc })
-            : new THREE.MeshStandardMaterial({ color: 0xaabbcc });
+          const headMat = isPerformance ? new THREE.MeshBasicMaterial({ color: 0xaabbcc }) : new THREE.MeshStandardMaterial({ color: 0xaabbcc });
           const head = new THREE.Mesh(headGeo, headMat);
           head.position.z = -0.3;
           arrowGroup.add(head);
@@ -804,21 +776,12 @@ export class Mob {
   updatePositionFromServer(x: number, y: number, z: number) {
     if (this.targetPosition) {
       if (this.predictionOffset.lengthSq() > 0.001) {
-        const deltaPos = new THREE.Vector3(
-          x - this.targetPosition.x,
-          y - this.targetPosition.y,
-          z - this.targetPosition.z,
-        );
+        const deltaPos = new THREE.Vector3(x - this.targetPosition.x, y - this.targetPosition.y, z - this.targetPosition.z);
         const dot = deltaPos.dot(this.predictionOffset);
         if (dot > 0) {
-          const matchLen =
-            deltaPos.length() *
-            (dot / (deltaPos.length() * this.predictionOffset.length()));
+          const matchLen = deltaPos.length() * (dot / (deltaPos.length() * this.predictionOffset.length()));
           if (!isNaN(matchLen)) {
-            const matchedVec = this.predictionOffset
-              .clone()
-              .normalize()
-              .multiplyScalar(matchLen);
+            const matchedVec = this.predictionOffset.clone().normalize().multiplyScalar(matchLen);
             this.predictionOffset.sub(matchedVec);
             if (this.predictionOffset.dot(matchedVec) < 0) {
               this.predictionOffset.set(0, 0, 0);
@@ -832,15 +795,15 @@ export class Mob {
 
   knockback(dir: THREE.Vector3, force: number) {
     if (this.type === MobType.MORVANE) return;
-    this.velocity.x = dir.x * force * 0.5;
-    this.velocity.z = dir.z * force * 0.5;
-    this.velocity.y = 2.75; // Upward pop (lift)
+    this.velocity.x = dir.x * force;
+    this.velocity.z = dir.z * force;
+    this.velocity.y = 5.5; // Upward pop (lift)
     this.knockbackTimer = 0.5; // 500ms of knockback where AI movement is disabled
     this.lastKnockbackTime = Date.now();
-
+    
     // Client-side visual knockback prediction
-    this.knockbackVelocity.copy(dir).multiplyScalar(force * 0.5);
-    this.knockbackVelocity.y = 2.75;
+    this.knockbackVelocity.copy(dir).multiplyScalar(force);
+    this.knockbackVelocity.y = 5.5;
   }
 
   takeDamage(
@@ -861,7 +824,7 @@ export class Mob {
         this.visualOffset.addScaledVector(kDir, 0.4);
         this.damageRotateAxis.set(-kDir.z, 0, kDir.x).normalize();
         this.damageRotate = 0.4;
-
+        
         this.knockback(kDir, knockbackDir.length());
       } else {
         this._recoilDir

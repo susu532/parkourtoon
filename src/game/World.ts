@@ -11,12 +11,16 @@ import {
   isAnyTorch,
 } from "./TextureAtlas";
 import { getBattleRoyaleBlock } from "./generation/BattleRoyaleGenerator";
-import { getSummerLabBlock } from "./generation/SummerLabGenerator";
 import { audioManager } from "./AudioManager";
 import { settingsManager } from "./Settings";
 import { LightingManager } from "./LightingManager";
 import { networkManager } from "./NetworkManager";
 import { biomes, getTerrainData, noise2D, noise3D } from "./TerrainGenerator";
+import { getSummerLabPhase } from "./PhaseHelper";
+import { getSummerLabBlock } from "./generation/SummerLabGenerator";
+import { getWaterParkBlock } from "./generation/WaterParkGenerator";
+import { getHappyIslandBlock } from "./generation/HappyIslandGenerator";
+import { getBackroomsBlock } from "./generation/BackroomsGenerator";
 import { skycastlesBakedBlocks } from "./SkycastlesBakedBlocks";
 import { bakedBlocksMap } from "./BakedBlocks";
 
@@ -64,6 +68,7 @@ export class World {
   isHub: boolean = false;
   isSkyCastles: boolean = false;
   isSummerLab: boolean = false;
+  isHappyIsland: boolean = false;
   isDungeonDelver: boolean = false;
   isBattleRoyale: boolean = false;
   isSkyIsland: boolean = false;
@@ -79,12 +84,13 @@ export class World {
   bakedBlocksProcessed = false;
 
   bakedBlocks = bakedBlocksMap;
+  generationEpoch: number = 0;
 
   biomes = biomes;
 
   meshWorkers: Worker[] = [];
   nextWorkerIndex = 0;
-  pendingTasks: Map<number, { resolve: any; reject: any; chunk: Chunk }> =
+  pendingTasks: Map<number, { resolve: any; reject: any; chunk: Chunk; epoch: number }> =
     new Map();
   taskIdCounter = 0;
   constructor(scene: THREE.Scene) {
@@ -94,6 +100,7 @@ export class World {
     this.isHub = serverName.startsWith("hub");
     this.isSkyCastles = serverName.startsWith("skycastles");
     this.isSummerLab = serverName.startsWith("summerlab");
+    this.isHappyIsland = serverName.startsWith("happyisland");
     this.isDungeonDelver = serverName.startsWith("dungeondelver");
     this.isBattleRoyale = serverName.startsWith("battleroyale");
     this.isSkyIsland = serverName.startsWith("skyisland");
@@ -102,27 +109,24 @@ export class World {
     this.updater = new WorldUpdater(this);
     this.raycaster = new WorldRaycast(this);
 
+    
+    const summerLabPhase = getSummerLabPhase();
+
     let texture: THREE.Texture;
-    if (this.isSummerLab) {
+    if (this.isSummerLab && summerLabPhase !== 2 && summerLabPhase !== 3) {
       texture = createSummerLabTextureAtlas();
     } else {
       texture = createTextureAtlas();
     }
 
-    const hwConcurrency =
-      (typeof navigator !== "undefined" && navigator.hardwareConcurrency) || 4;
-    const isMobileDevice =
-      typeof window !== "undefined" &&
-      (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-        navigator.userAgent,
-      ) ||
-        "ontouchstart" in window ||
-        navigator.maxTouchPoints > 0);
+    const hwConcurrency = (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || 4;
+    const isMobileDevice = typeof window !== 'undefined' && 
+      (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+      ('ontouchstart' in window) || 
+      (navigator.maxTouchPoints > 0));
 
     // Limit workers to prevent Context Switching overhead on low-end CPUs
-    const workerCount = isMobileDevice
-      ? 2
-      : Math.max(1, Math.floor(hwConcurrency / 2));
+    const workerCount = isMobileDevice ? 2 : Math.max(1, Math.floor(hwConcurrency / 2));
 
     for (let i = 0; i < workerCount; i++) {
       const worker = new MesherWorker();
@@ -135,10 +139,6 @@ export class World {
       vertexColors: true,
       roughness: 0.8,
       metalness: 0.1,
-      depthWrite: true,
-      polygonOffset: true,
-      polygonOffsetFactor: 1,
-      polygonOffsetUnits: 1,
     });
 
     this.opaqueMaterial.onBeforeCompile = (shader) => {
@@ -378,7 +378,7 @@ export class World {
                  customMetalness = 0.8;
              }
              
-             if (uIsSummerLab > 0.5 || uHideShininess > 0.5) {
+             if (abs(v - 0.5) < 0.01 && u >= 0.62 && u <= 0.85) { customRoughness = 0.15; customMetalness = 0.8; } else if (uIsSummerLab > 0.5 || uHideShininess > 0.5) {
                  // Completely eliminate specular/glossy highlights to prevent excessive light reflection
                  customRoughness = 1.0;
                  customMetalness = 0.0;
@@ -531,7 +531,7 @@ export class World {
               gl_FragColor.rgb = clamp(color + tint, 0.0, 1.0);
             }
           #endif
-          `,
+          `
         );
     };
 
@@ -939,7 +939,7 @@ export class World {
               gl_FragColor.rgb = clamp(color + tint, 0.0, 1.0);
             }
           #endif
-          `,
+          `
         );
     };
   }
@@ -955,28 +955,22 @@ export class World {
       (this.opaqueMaterial as any).userData.uPerformanceMode.value =
         isPerformanceMode ? 1.0 : 0.0;
     }
-
+    
     // Update uIsSummerLab
     if ((this.opaqueMaterial as any).userData?.uIsSummerLab) {
-      (this.opaqueMaterial as any).userData.uIsSummerLab.value = isSummerLab
-        ? 1.0
-        : 0.0;
+      (this.opaqueMaterial as any).userData.uIsSummerLab.value = isSummerLab ? 1.0 : 0.0;
     }
     if ((this.transparentMaterial as any).userData?.uIsSummerLab) {
-      (this.transparentMaterial as any).userData.uIsSummerLab.value =
-        isSummerLab ? 1.0 : 0.0;
+      (this.transparentMaterial as any).userData.uIsSummerLab.value = isSummerLab ? 1.0 : 0.0;
     }
 
     // Update uHideShininess
     const hideShininess = settings.hideShininess;
     if ((this.opaqueMaterial as any).userData?.uHideShininess) {
-      (this.opaqueMaterial as any).userData.uHideShininess.value = hideShininess
-        ? 1.0
-        : 0.0;
+      (this.opaqueMaterial as any).userData.uHideShininess.value = hideShininess ? 1.0 : 0.0;
     }
     if ((this.transparentMaterial as any).userData?.uHideShininess) {
-      (this.transparentMaterial as any).userData.uHideShininess.value =
-        hideShininess ? 1.0 : 0.0;
+      (this.transparentMaterial as any).userData.uHideShininess.value = hideShininess ? 1.0 : 0.0;
     }
     if ((this.transparentMaterial as any).userData?.uPerformanceMode) {
       (this.transparentMaterial as any).userData.uPerformanceMode.value =
@@ -1117,35 +1111,48 @@ export class World {
 
   isIndestructible(x: number, y: number, z: number) {
     let isHub = false;
-    let isSummerLab = false;
     if (typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);
       const serverName = urlParams.get("server") || "dungeondelver";
       isHub = serverName.startsWith("hub");
-      isSummerLab = serverName.startsWith("summerlab");
     }
 
     // The entire hub world is indestructible to prevent players from mining the spawn
     if (isHub) return true;
 
-    // Platform blocks generated are unbreakable in SummerLab
-    if (isSummerLab) {
-      if (getSummerLabBlock(Math.floor(x), Math.floor(y), Math.floor(z)) !== 0)
-        return true;
-    }
-
-    if (
-      this.isDungeonDelver &&
-      Math.floor(x) === 0 &&
-      Math.floor(y) === 0 &&
-      Math.floor(z) === 0
-    ) {
+    if (this.isDungeonDelver && Math.floor(x) === 0 && Math.floor(y) === 0 && Math.floor(z) === 0) {
       return true;
     }
 
-    const absX = Math.abs(Math.floor(x));
-    const absZ = Math.abs(Math.floor(z));
+    const fx = Math.floor(x);
+    const fz = Math.floor(z);
+    
+    if (this.isSummerLab) {
+      const summerLabPhase = getSummerLabPhase();
+      if (summerLabPhase === 3) return true;
 
+      // We can't rely completely on Date.now() client-side perfectly synced, but we can do our best.
+      // Protect all spawn areas from being built on since they are small 5x5 zones.
+      if (summerLabPhase === 1) {
+          if (Math.abs(fx - 0) <= 2 && Math.abs(fz - 35) <= 2) return true; // Water park
+      } else if (summerLabPhase === 2) {
+          if (Math.abs(fx - 0) <= 2 && Math.abs(fz - 0) <= 2) return true;  // Happy Island
+      } else {
+          if (Math.abs(fx - 0) <= 2 && Math.abs(fz - 25) <= 2) return true; // Classic
+      }
+      
+      let initialBlock = 0;
+      if (summerLabPhase === 1) initialBlock = getWaterParkBlock(fx, Math.floor(y), fz);
+      else if (summerLabPhase === 2) initialBlock = getHappyIslandBlock(fx, Math.floor(y), fz);
+      else if (summerLabPhase === 3) initialBlock = getBackroomsBlock(fx, Math.floor(y), fz);
+      else initialBlock = getSummerLabBlock(fx, Math.floor(y), fz);
+      
+      if (initialBlock !== 0 && initialBlock !== BLOCK.AIR) return true;
+    }
+
+    const absX = Math.abs(fx);
+    const absZ = Math.abs(fz);
+    
     // Protect the 4 map corners from block placement/destruction
     if (absX >= 29 && absX <= 34 && absZ >= 76 && absZ <= 81) {
       return true;
@@ -1394,8 +1401,7 @@ export class World {
           for (let lz = 0; lz < CHUNK_SIZE; lz++) {
             for (let lx = 0; lx < CHUNK_SIZE; lx++) {
               const type = changes[lx | (lz << 4) | (ly << 8)];
-              if (type !== 65535) {
-                // 65535 identifies 'unmodified'
+              if (type !== 65535) { // 65535 identifies 'unmodified'
                 chunk.setBlockFast(lx, ly, lz, type);
               }
             }
@@ -1413,7 +1419,15 @@ export class World {
     if (!task) return;
     this.pendingTasks.delete(data.taskId);
 
+    const taskEpoch = task.epoch;
+    
     const processMesh = () => {
+      // Prevent race conditions where reset() is called before the queued processMesh executes
+      if (this.generationEpoch !== taskEpoch) {
+        task.chunk.isMeshing = false;
+        task.resolve();
+        return;
+      }
       try {
         task.chunk.applyMesh(
           data.opaque,
@@ -1449,11 +1463,6 @@ export class World {
     this.updater.update(playerPosition, camera);
   }
 
-  dispose() {
-    this.meshWorkers.forEach((w) => w.terminate());
-    this.meshWorkers = [];
-  }
-
   rebuildAllChunks() {
     this.chunks.forEach((chunk) => {
       chunk.needsUpdate = true;
@@ -1461,18 +1470,44 @@ export class World {
   }
 
   reset(serverName: string = "dungeondelver") {
+    this.generationEpoch++;
     if (!serverName) serverName = "dungeondelver";
     this.isHub = serverName.startsWith("hub");
     this.isSkyCastles = serverName.startsWith("skycastles");
     this.isSummerLab = serverName.startsWith("summerlab");
+    this.isHappyIsland = serverName.startsWith("happyisland");
     this.isDungeonDelver = serverName.startsWith("dungeondelver");
     this.isBattleRoyale = serverName.startsWith("battleroyale");
     this.isSkyIsland = serverName.startsWith("skyisland");
 
+    const summerLabPhase = getSummerLabPhase();
+
+    let texture: THREE.Texture;
+    if (this.isSummerLab && summerLabPhase !== 2 && summerLabPhase !== 3) {
+      texture = createSummerLabTextureAtlas();
+    } else {
+      texture = createTextureAtlas();
+    }
+    
+    if (this.opaqueMaterial) {
+      this.opaqueMaterial.map = texture;
+      this.opaqueMaterial.needsUpdate = true;
+      if ((this.opaqueMaterial as any).userData?.uIsSummerLab) {
+        (this.opaqueMaterial as any).userData.uIsSummerLab.value = this.isSummerLab && summerLabPhase !== 2 && summerLabPhase !== 3 ? 1.0 : 0.0;
+      }
+    }
+    if (this.transparentMaterial) {
+      this.transparentMaterial.map = texture;
+      this.transparentMaterial.needsUpdate = true;
+      if ((this.transparentMaterial as any).userData?.uIsSummerLab) {
+        (this.transparentMaterial as any).userData.uIsSummerLab.value = this.isSummerLab && summerLabPhase !== 2 && summerLabPhase !== 3 ? 1.0 : 0.0;
+      }
+    }
+
     this.chunks.forEach((chunk) => {
       this.meshesToRemove.push({
-        mesh: chunk.mesh,
-        transparentMesh: chunk.transparentMesh,
+         mesh: chunk.mesh,
+         transparentMesh: chunk.transparentMesh
       });
       if (chunk.mesh) {
         this.scene.remove(chunk.mesh);
@@ -1483,6 +1518,7 @@ export class World {
     });
     this.chunks.clear();
     this.generatingChunks.clear();
+    this.pendingTasks.clear();
     this.meshesToAdd = [];
     this.fallingBlocks.clear();
     this.waterUpdates.clear();

@@ -16,6 +16,7 @@ import { settingsManager } from "./Settings";
 import { ItemType } from "./Inventory";
 import { audioManager } from "./AudioManager";
 import { useGameStore } from "../store/gameStore";
+import { getSummerLabPhase } from "./PhaseHelper";
 
 const _zeroVec = new THREE.Vector3(0, 0, 0);
 
@@ -120,6 +121,9 @@ export class RemotePlayer {
   isGrounded = true;
   swingSpeed = 15;
   fluidColor: number | undefined;
+
+  grapplePoint: THREE.Vector3 | null = null;
+  grappleLine: THREE.Mesh | null = null;
 
   skills: any = {};
   isDead: boolean = false;
@@ -663,6 +667,20 @@ export class RemotePlayer {
     this.updateItem(renderOffHandType, true);
   }
 
+  private disposeGroup(group: THREE.Group) {
+    while (group.children.length > 0) {
+      const child = group.children[0];
+      group.remove(child);
+      child.traverse((c: any) => {
+        if (c.geometry) c.geometry.dispose();
+        if (c.material) {
+          if (Array.isArray(c.material)) c.material.forEach((m: any) => m.dispose());
+          else c.material.dispose();
+        }
+      });
+    }
+  }
+
   private updateItem(type: number, isOffHand: boolean) {
     const currentType = isOffHand
       ? this.renderedOffHandItemType
@@ -702,7 +720,8 @@ export class RemotePlayer {
       (type >= 460 && type <= 472) ||
       type === 54 ||
       type === ItemType.FLUID_CHOCOLATE_HOSE ||
-      type === ItemType.WASHING_HOSE;
+      type === ItemType.WASHING_HOSE ||
+      type === ItemType.SPIDER_GLOVES;
     const isFood = type >= 456 && type <= 459;
     const isMaterial =
       type === 13 ||
@@ -726,7 +745,7 @@ export class RemotePlayer {
       model.visible = true;
 
       if (currentModelType !== type) {
-        model.clear();
+        this.disposeGroup(model);
         const itemModel = createItemModel(type as ItemType);
         model.add(itemModel);
         if (isOffHand) this.currentOffHandModelType = type;
@@ -821,7 +840,9 @@ export class RemotePlayer {
           const isSummerLab = new URLSearchParams(window.location.search)
             .get("server")
             ?.startsWith("summerlab");
-          (mesh.material as THREE.MeshStandardMaterial).map = isSummerLab
+          const summerLabPhase = getSummerLabPhase();
+          const useSummerLabAtlas = isSummerLab && (summerLabPhase !== 2 && summerLabPhase !== 3);
+          (mesh.material as THREE.MeshStandardMaterial).map = useSummerLabAtlas
             ? createSummerLabTextureAtlas()
             : createTextureAtlas();
         }
@@ -831,8 +852,8 @@ export class RemotePlayer {
 
   knockback(dir: THREE.Vector3, force: number) {
     // Client-side visual knockback prediction for instant response
-    this.knockbackVelocity.copy(dir).multiplyScalar(force * 0.75);
-    this.knockbackVelocity.y = 3.75; // Strong vertical lift for arc (simulates 2.75 + float compensation)
+    this.knockbackVelocity.copy(dir).multiplyScalar(force * 1.5);
+    this.knockbackVelocity.y = 3.2;
     this.lastKnockbackTime = Date.now();
   }
 
@@ -944,9 +965,6 @@ export class RemotePlayer {
 
     // Apply knockback to prediction offset instead of modifying interpolation tracks
     if (this.knockbackVelocity.lengthSq() > 0.01) {
-      // Apply realistic gravity to the visual knockback prediction
-      this.knockbackVelocity.y -= 28.0 * delta; // standard gravity acceleration pulling it down
-
       const step = this.knockbackVelocity.clone().multiplyScalar(delta);
 
       if (world) {
@@ -992,9 +1010,7 @@ export class RemotePlayer {
         this.predictionOffset.add(step);
       }
 
-      // Decelerate horizontal axes faster (friction), let gravity govern vertical axis
-      this.knockbackVelocity.x *= Math.exp(-4.605 * delta);
-      this.knockbackVelocity.z *= Math.exp(-4.605 * delta);
+      this.knockbackVelocity.multiplyScalar(1.0 - 8.0 * delta); // Snappier friction for predictability
     }
 
     // Decay the prediction offset slowly as fallback (in case server misses knockback)
@@ -1752,6 +1768,10 @@ export class RemotePlayer {
         }
       }
     } else {
+      if (this.heldItemModel) {
+          this.heldItemModel.position.set(0, 0, 0); // Reset for normal items
+          this.heldItemModel.rotation.set(0, 0, 0);
+      }
       if (this.heldItemType === ItemType.BOW && this.heldItemModel) {
         this.heldItemModel.rotation.set(
           -Math.PI / 4,
@@ -1764,6 +1784,10 @@ export class RemotePlayer {
           arrowMesh.visible = false;
           stringMesh.position.set(0.24, 0, 0);
         }
+      } else if (this.heldItemType === ItemType.SPIDER_GLOVES && this.heldItemModel) {
+        // Snap gloves to hand position and point forward
+        this.heldItemModel.position.set(0, -0.65, 0.1);
+        this.heldItemModel.rotation.set(-Math.PI / 2, 0, 0);
       }
 
       if (this.isSwinging) {
@@ -1908,6 +1932,49 @@ export class RemotePlayer {
       this.rightLegMesh.rotation.x -= hitT * 0.15;
       this.leftLegMesh.rotation.z += hitT * 0.1;
       this.rightLegMesh.rotation.z -= hitT * 0.1;
+    }
+
+    if (this.grapplePoint && this.group.parent) {
+      if (!this.grappleLine) {
+        const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const geometry = new THREE.CylinderGeometry(0.005, 0.005, 1, 8); // Thinner line
+        geometry.rotateX(Math.PI / 2);
+        this.grappleLine = new THREE.Mesh(geometry, material);
+        this.group.parent.add(this.grappleLine);
+      }
+      
+      let startPos = new THREE.Vector3();
+      const nozzleOffset = new THREE.Vector3(0, 0.22, 0.08); // Offset to glove nozzle
+      
+      this.group.updateMatrixWorld(true);
+
+      let nozzle = null;
+      if (this.heldItemModel) {
+        nozzle = this.heldItemModel.getObjectByName('spider_nozzle');
+      }
+
+      if (nozzle) {
+        nozzle.getWorldPosition(startPos);
+      } else if (this.heldItemModel && this.heldItemModel.children.length > 0) {
+        startPos.copy(nozzleOffset);
+        this.heldItemModel.children[0].localToWorld(startPos);
+      } else if (this.heldItemModel) {
+        startPos.copy(nozzleOffset);
+        this.heldItemModel.localToWorld(startPos);
+      } else {
+        this.group.getWorldPosition(startPos);
+        startPos.y += 1.5; // Top of the player
+      }
+      
+      const distance = startPos.distanceTo(this.grapplePoint);
+      this.grappleLine.position.copy(startPos).lerp(this.grapplePoint, 0.5);
+      this.grappleLine.scale.set(1, 1, distance);
+      this.grappleLine.lookAt(this.grapplePoint);
+    } else if (this.grappleLine) {
+      if (this.grappleLine.parent) this.grappleLine.parent.remove(this.grappleLine);
+      this.grappleLine.geometry.dispose();
+      (this.grappleLine.material as THREE.Material).dispose();
+      this.grappleLine = null;
     }
   }
 

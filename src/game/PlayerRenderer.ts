@@ -16,6 +16,7 @@ import { ItemType } from "./Inventory";
 import { createItemModel } from "./ItemModels";
 import { settingsManager } from "./Settings";
 import { audioManager } from "./AudioManager";
+import { getSummerLabPhase } from "./PhaseHelper";
 
 export class PlayerRenderer {
   player: Player;
@@ -45,6 +46,8 @@ export class PlayerRenderer {
   gliderLeftWing: THREE.Mesh | null = null;
   gliderRightWing: THREE.Mesh | null = null;
   gliderOpenAmount: number = 0;
+
+  grappleLine: THREE.Mesh | null = null;
 
   heldItemMesh: THREE.Mesh | null = null;
   heldItemModel: THREE.Group | null = null;
@@ -691,7 +694,8 @@ export class PlayerRenderer {
     this.fpArmMesh.rotation.set(0.4, -0.2, 0.1);
 
     const blockGeo = new THREE.BoxGeometry(0.4, 0.4, 0.4);
-    const texture = this.player.world.isSummerLab
+    const summerLabPhase = getSummerLabPhase();
+    const texture = this.player.world.isSummerLab && (summerLabPhase !== 2 && summerLabPhase !== 3)
       ? createSummerLabTextureAtlas()
       : createTextureAtlas();
     const blockMat = isPerformance
@@ -740,24 +744,25 @@ export class PlayerRenderer {
     this.fpOffHandArmMesh.position.set(-0.6, -0.6, -0.5);
     this.fpOffHandArmMesh.rotation.set(0.4, 0.2, -0.1);
 
-    const blockGeo = new THREE.BoxGeometry(0.4, 0.4, 0.4);
-    const texture = this.player.world.isSummerLab
+    const blockGeo2 = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+    const summerLabPhase2 = getSummerLabPhase();
+    const texture2 = this.player.world.isSummerLab && (summerLabPhase2 !== 2 && summerLabPhase2 !== 3)
       ? createSummerLabTextureAtlas()
       : createTextureAtlas();
-    const blockMat = isPerformance
+    const blockMat2 = isPerformance
       ? new THREE.MeshBasicMaterial({
-          map: texture,
+          map: texture2,
           transparent: true,
           alphaTest: 0.5,
         })
       : new THREE.MeshStandardMaterial({
-          map: texture,
+          map: texture2,
           transparent: true,
           alphaTest: 0.5,
           roughness: 1.0,
           metalness: 0.0,
         });
-    this.fpOffHandBlockMesh = new THREE.Mesh(blockGeo, blockMat);
+    this.fpOffHandBlockMesh = new THREE.Mesh(blockGeo2, blockMat2);
     this.fpOffHandBlockMesh.castShadow = !isPerformance;
     this.fpOffHandBlockMesh.receiveShadow = !isPerformance; // Disabled in performance mode
     this.fpOffHandBlockMesh.position.set(-0.3, -0.15, -0.8);
@@ -793,6 +798,20 @@ export class PlayerRenderer {
     }
   }
 
+  private disposeGroup(group: THREE.Group) {
+    while (group.children.length > 0) {
+      const child = group.children[0];
+      group.remove(child);
+      child.traverse((c: any) => {
+        if (c.geometry) c.geometry.dispose();
+        if (c.material) {
+          if (Array.isArray(c.material)) c.material.forEach((m: any) => m.dispose());
+          else c.material.dispose();
+        }
+      });
+    }
+  }
+
   private updateItemHand(type: number, isOffHand: boolean) {
     if (isOffHand && this.offHandItemType === type) return;
     if (!isOffHand && this.heldItemType === type) return;
@@ -814,6 +833,23 @@ export class PlayerRenderer {
       : this.currentFpModelType;
 
     if (!mesh || !model || !blockMesh || !fpModelGrp) return;
+
+    // Ensure block textures are up to date on rotation
+    if (mesh.material || blockMesh.material) {
+        const isSummerLab = this.player.world.isSummerLab;
+        const summerLabPhase = getSummerLabPhase();
+        const useSummerLabAtlas = isSummerLab && (summerLabPhase !== 2 && summerLabPhase !== 3);
+        const texture = useSummerLabAtlas ? createSummerLabTextureAtlas() : createTextureAtlas();
+        
+        if (mesh.material) {
+           (mesh.material as THREE.MeshStandardMaterial).map = texture;
+           (mesh.material as THREE.Material).needsUpdate = true;
+        }
+        if (blockMesh.material) {
+           (blockMesh.material as THREE.MeshStandardMaterial).map = texture;
+           (blockMesh.material as THREE.Material).needsUpdate = true;
+        }
+    }
 
     if (type === 0) {
       mesh.visible = false;
@@ -839,7 +875,8 @@ export class PlayerRenderer {
       (type >= 460 && type <= 472) ||
       type === 54 ||
       type === ItemType.FLUID_CHOCOLATE_HOSE ||
-      type === ItemType.WASHING_HOSE;
+      type === ItemType.WASHING_HOSE ||
+      type === ItemType.SPIDER_GLOVES;
     const isFood = type >= 456 && type <= 459;
     const isMaterial =
       type === 13 ||
@@ -865,7 +902,7 @@ export class PlayerRenderer {
       fpModelGrp.visible = true;
 
       if (currentModelType !== type) {
-        model.clear();
+        this.disposeGroup(model);
         const itemModel = createItemModel(type as ItemType);
         model.add(itemModel);
         if (isOffHand) this.currentOffHandModelType = type;
@@ -873,7 +910,7 @@ export class PlayerRenderer {
       }
 
       if (currentFpModelType !== type) {
-        fpModelGrp.clear();
+        this.disposeGroup(fpModelGrp);
         const fpHeldModel = createItemModel(type as ItemType);
         const isPerformance = settingsManager.getSettings().performanceMode;
         // Enable receiveShadow for all first-person sub-models
@@ -949,6 +986,15 @@ export class PlayerRenderer {
         fpModelGrp.position.set(0.55 * side, -0.35, -0.65);
         fpModelGrp.scale.set(0.9, 0.9, 0.9);
         fpModelGrp.rotation.set(-Math.PI / 2 + 0.2, 0, 0.2 * side);
+      } else if (type === ItemType.SPIDER_GLOVES) {
+        model.position.set(0, -0.4, -0.1);
+        model.scale.set(1.1, 1.1, 1.1);
+        model.rotation.set(-Math.PI / 4, (Math.PI / 8) * side, (Math.PI / 16) * side);
+
+        // closer to screen
+        fpModelGrp.position.set(0.35 * side, -0.25, -0.4);
+        fpModelGrp.scale.set(1.1, 1.1, 1.1);
+        fpModelGrp.rotation.set(0.4, (-Math.PI / 8) * side, -0.1 * side);
       } else {
         model.position.set(0, -0.4, -0.1);
         model.scale.set(1.1, 1.1, 1.1);
@@ -1011,8 +1057,8 @@ export class PlayerRenderer {
         uvAttribute.needsUpdate = true;
 
         if (!(mesh.material as THREE.MeshStandardMaterial).map) {
-          (mesh.material as THREE.MeshStandardMaterial).map = this.player.world
-            .isSummerLab
+          const summerLabPhase = getSummerLabPhase();
+          (mesh.material as THREE.MeshStandardMaterial).map = (this.player.world.isSummerLab && (summerLabPhase !== 2 && summerLabPhase !== 3))
             ? createSummerLabTextureAtlas()
             : createTextureAtlas();
         }
@@ -1520,6 +1566,10 @@ export class PlayerRenderer {
           }
         }
       } else {
+        if (this.heldItemModel) {
+            this.heldItemModel.position.set(0, 0, 0); // Reset for normal items
+            this.heldItemModel.rotation.set(0, 0, 0);
+        }
         if (this.heldItemType === ItemType.BOW && this.heldItemModel) {
           this.heldItemModel.rotation.set(
             -Math.PI / 4,
@@ -1532,6 +1582,10 @@ export class PlayerRenderer {
             arrowMesh.visible = false;
             stringMesh.position.set(0.24, 0, 0);
           }
+        } else if (this.heldItemType === ItemType.SPIDER_GLOVES && this.heldItemModel) {
+          // Snap gloves to hand position and point forward
+          this.heldItemModel.position.set(0, -0.65, 0.1);
+          this.heldItemModel.rotation.set(-Math.PI / 2, 0, 0);
         }
       }
 
@@ -1662,5 +1716,52 @@ export class PlayerRenderer {
           Math.min(limitUp, this.player.headMesh.rotation.x),
         ) + headPitchOffset;
     }
+
+  }
+
+  public updateGrappleLine() {
+    if (this.player.grapplePoint) {
+      if (!this.grappleLine) {
+        const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const geometry = new THREE.CylinderGeometry(0.005, 0.005, 1, 8); // Thinner line
+        geometry.rotateX(Math.PI / 2);
+        this.grappleLine = new THREE.Mesh(geometry, material);
+        this.player.world.scene.add(this.grappleLine);
+      }
+      
+      let startPos = this.player.playerHeadPos.clone();
+      const nozzleOffset = new THREE.Vector3(0, 0.22, 0.08); // Offset to glove nozzle
+      
+      let nozzle = null;
+      if (this.player.perspective === 0 && this.fpHeldItemModel) {
+        nozzle = this.fpHeldItemModel.getObjectByName('spider_nozzle');
+      } else if (this.heldItemModel) {
+        nozzle = this.heldItemModel.getObjectByName('spider_nozzle');
+      }
+
+      if (nozzle) {
+        nozzle.getWorldPosition(startPos);
+      } else if (this.player.perspective === 0 && this.fpArmGroup && this.fpHeldItemModel && this.fpHeldItemModel.children.length > 0) {
+            startPos.copy(nozzleOffset);
+            this.fpHeldItemModel.children[0].localToWorld(startPos);
+      } else if (this.heldItemModel && this.heldItemModel.children.length > 0) {
+            startPos.copy(nozzleOffset);
+            this.heldItemModel.children[0].localToWorld(startPos);
+      } else if (this.heldItemModel) {
+            startPos.copy(nozzleOffset);
+            this.heldItemModel.localToWorld(startPos);
+      }
+      
+      const distance = startPos.distanceTo(this.player.grapplePoint);
+      this.grappleLine.position.copy(startPos).lerp(this.player.grapplePoint, 0.5);
+      this.grappleLine.scale.set(1, 1, distance);
+      this.grappleLine.lookAt(this.player.grapplePoint);
+    } else if (this.grappleLine) {
+      this.player.world.scene.remove(this.grappleLine);
+      this.grappleLine.geometry.dispose();
+      (this.grappleLine.material as THREE.Material).dispose();
+      this.grappleLine = null;
+    }
   }
 }
+

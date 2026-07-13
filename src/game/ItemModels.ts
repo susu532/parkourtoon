@@ -1,92 +1,69 @@
-import * as THREE from "three";
-import { ItemType } from "./Inventory";
-import { ITEM_COLORS } from "./Constants";
-import { settingsManager } from "./Settings";
+import * as THREE from 'three';
+import { ItemType } from './Inventory';
+import { ITEM_COLORS } from './Constants';
+import { settingsManager } from './Settings';
 
-export const animatedItems: {
-  mesh: THREE.Object3D;
-  update: (time: number) => void;
-}[] = [];
+export const animatedItems: { mesh: THREE.Object3D, update: (time: number) => void }[] = [];
 
 export function updateAnimatedItems(time: number) {
   for (let i = animatedItems.length - 1; i >= 0; i--) {
     const item = animatedItems[i];
-
+    
     // Check if item is in the scene graph
     let inScene = false;
     let node: THREE.Object3D | null = item.mesh;
     while (node) {
-      if (node.type === "Scene") {
+      if (node.type === 'Scene') {
         inScene = true;
         break;
       }
       node = node.parent;
     }
-
+    
     // If not in scene and has no parent at all, it might be orphaned.
     // But we allow it to exist if it has a parent (maybe temporarily off-screen).
     if (inScene) {
       item.update(time);
     } else if (!item.mesh.parent) {
-      // If it has no parent, it's likely been disposed/cleared.
-      // E.g. PlayerRenderer.ts model.clear() removes children and sets parent to null.
-      animatedItems.splice(i, 1);
+       // If it has no parent, it's likely been disposed/cleared.
+       // E.g. PlayerRenderer.ts model.clear() removes children and sets parent to null.
+       animatedItems.splice(i, 1);
     }
   }
 }
 
 export function createItemModel(type: ItemType): THREE.Group {
   const group = new THREE.Group();
-
+  
   // Base colors
-  let primaryColor = ITEM_COLORS[type] || "#FFFFFF";
-  let handleColor = "#8B5A2B"; // Default wood handle
-
+  let primaryColor = ITEM_COLORS[type] || '#FFFFFF';
+  let handleColor = '#8B5A2B'; // Default wood handle
+  
   // Specific material tones for depth
   const material = new THREE.MeshStandardMaterial({
     color: primaryColor,
     roughness: 0.7,
-    metalness: 0.3,
+    metalness: 0.3
   });
-
+  
   const handleMaterial = new THREE.MeshStandardMaterial({
     color: handleColor,
     roughness: 0.9,
-    metalness: 0.0,
+    metalness: 0.0
   });
 
-  const isPickaxe =
-    type >= ItemType.WOODEN_PICKAXE && type <= ItemType.DIAMOND_PICKAXE;
-  const isSword =
-    type >= ItemType.WOODEN_SWORD && type <= ItemType.DIAMOND_SWORD;
-  const isShovel =
-    type >= ItemType.WOODEN_SHOVEL && type <= ItemType.DIAMOND_SHOVEL;
+  const isPickaxe = type >= ItemType.WOODEN_PICKAXE && type <= ItemType.DIAMOND_PICKAXE;
+  const isSword = type >= ItemType.WOODEN_SWORD && type <= ItemType.DIAMOND_SWORD;
+  const isShovel = type >= ItemType.WOODEN_SHOVEL && type <= ItemType.DIAMOND_SHOVEL;
   const isAxe = type >= ItemType.WOODEN_AXE && type <= ItemType.DIAMOND_AXE;
-  const isIngot =
-    type === ItemType.IRON_INGOT ||
-    type === ItemType.GOLD_INGOT ||
-    type === ItemType.COPPER_INGOT;
+  const isIngot = type === ItemType.IRON_INGOT || type === ItemType.GOLD_INGOT || type === ItemType.COPPER_INGOT;
   const isGem = type === ItemType.DIAMOND || type === ItemType.EMERALD;
-  const isLump =
-    type === ItemType.COAL ||
-    type === ItemType.REDSTONE ||
-    type === ItemType.LAPIS_LAZULI ||
-    type === ItemType.GUNPOWDER ||
-    type === ItemType.STRING ||
-    type === ItemType.SEEDS;
-  const isFood =
-    type === ItemType.APPLE ||
-    type === ItemType.GOLDEN_APPLE ||
-    type === ItemType.RAW_BEEF ||
-    type === ItemType.COOKED_BEEF ||
-    type === ItemType.BREAD;
+  const isLump = type === ItemType.COAL || type === ItemType.REDSTONE || type === ItemType.LAPIS_LAZULI || type === ItemType.GUNPOWDER || type === ItemType.STRING || type === ItemType.SEEDS;
+  const isFood = type === ItemType.APPLE || type === ItemType.GOLDEN_APPLE || type === ItemType.RAW_BEEF || type === ItemType.COOKED_BEEF || type === ItemType.BREAD;
   const isRod = type === ItemType.FISHING_ROD;
   const isBow = type === ItemType.BOW;
   const isArrow = type === ItemType.ARROW;
-  const isBucket =
-    type === ItemType.BUCKET ||
-    type === ItemType.WATER_BUCKET ||
-    type === ItemType.LAVA_BUCKET;
+  const isBucket = type === ItemType.BUCKET || type === ItemType.WATER_BUCKET || type === ItemType.LAVA_BUCKET;
   const isPearl = type === ItemType.ENDER_PEARL;
   const isBone = type === ItemType.BONE;
   const isFeather = type === ItemType.FEATHER;
@@ -99,49 +76,132 @@ export function createItemModel(type: ItemType): THREE.Group {
   const isLily = type === ItemType.LILY_PAD;
   const isLantern = type === ItemType.LANTERN;
   const isCampfire = type === ItemType.CAMPFIRE;
-  const isMushroom =
-    type === ItemType.MUSHROOM_RED || type === ItemType.MUSHROOM_BROWN;
+  const isMushroom = type === ItemType.MUSHROOM_RED || type === ItemType.MUSHROOM_BROWN;
   const isTorch = type === ItemType.TORCH;
   const isChest = type === ItemType.CHEST || type === ItemType.ENDER_CHEST;
-  const isHose =
-    type === ItemType.FLUID_CHOCOLATE_HOSE || type === ItemType.WASHING_HOSE;
+  const isHose = type === ItemType.FLUID_CHOCOLATE_HOSE || type === ItemType.WASHING_HOSE;
+  const isSpiderGloves = type === ItemType.SPIDER_GLOVES;
+  
+  if (isSpiderGloves) {
+    const redMat = new THREE.MeshStandardMaterial({ color: 0xe61919, roughness: 0.6 });
+    const blueMat = new THREE.MeshStandardMaterial({ color: 0x192be6, roughness: 0.6 });
+    const silverMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee, metalness: 0.9, roughness: 0.2 });
+    const darkSilverMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.8, roughness: 0.4 });
+    const blackMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
+    
+    // Base hand (fist)
+    // Y is forward (arm length), X is left/right, Z is thickness (top/bottom)
+    const palmGeo = new THREE.BoxGeometry(0.25, 0.25, 0.14);
+    const palm = new THREE.Mesh(palmGeo, redMat);
+    palm.position.set(0, 0.125, 0);
+    group.add(palm);
 
-  if (isHose) {
+    // Blue part (underside palm and wrist sides)
+    const bluePalmGeo = new THREE.BoxGeometry(0.20, 0.24, 0.04);
+    const bluePalm = new THREE.Mesh(bluePalmGeo, blueMat);
+    bluePalm.position.set(0, 0.12, -0.065);
+    group.add(bluePalm);
+
+    // Web shooter device (top of wrist, Z+)
+    const shooterDevGeo = new THREE.BoxGeometry(0.14, 0.18, 0.04);
+    const shooterDev = new THREE.Mesh(shooterDevGeo, silverMat);
+    shooterDev.position.set(0, 0.1, 0.08); // Z+ is top of hand
+    group.add(shooterDev);
+
+    // Wrist band holding shooter
+    const wristBandGeo = new THREE.BoxGeometry(0.26, 0.06, 0.16);
+    const wristBand = new THREE.Mesh(wristBandGeo, darkSilverMat);
+    wristBand.position.set(0, 0.05, 0);
+    group.add(wristBand);
+
+    // Web shooter nozzle
+    const nozzleGeo = new THREE.CylinderGeometry(0.015, 0.02, 0.12, 8);
+    const nozzle = new THREE.Mesh(nozzleGeo, silverMat);
+    nozzle.position.set(0, 0.22, 0.08); // Offset used by grapple line (0, 0.22, 0.08)
+    group.add(nozzle);
+    
+    const nozzleTip = new THREE.Object3D();
+    nozzleTip.position.set(0, 0.28, 0.08);
+    nozzleTip.name = 'spider_nozzle';
+    group.add(nozzleTip);
+
+    // Web shooter trigger (underside palm, Z-)
+    const triggerGeo = new THREE.BoxGeometry(0.08, 0.08, 0.02);
+    const trigger = new THREE.Mesh(triggerGeo, silverMat);
+    trigger.position.set(0, 0.15, -0.085);
+    group.add(trigger);
+
+    // Fingers
+    const fingerGeo = new THREE.BoxGeometry(0.05, 0.14, 0.05);
+    
+    // Index finger (extended Y+)
+    const indexFinger = new THREE.Mesh(fingerGeo, redMat);
+    indexFinger.position.set(0.09, 0.3, 0.0);
+    indexFinger.rotation.x = -0.1; // Slight outward angle
+    group.add(indexFinger);
+
+    // Pinky finger (extended Y+)
+    const pinkyFinger = new THREE.Mesh(fingerGeo, redMat);
+    pinkyFinger.position.set(-0.09, 0.3, 0.0);
+    pinkyFinger.rotation.x = -0.1;
+    group.add(pinkyFinger);
+
+    // Bent middle finger
+    const bentFingerGeo1 = new THREE.BoxGeometry(0.05, 0.08, 0.14);
+    const middleFinger = new THREE.Mesh(bentFingerGeo1, redMat);
+    middleFinger.position.set(0.03, 0.26, -0.03); 
+    group.add(middleFinger);
+
+    // Bent ring finger
+    const bentFingerGeo2 = new THREE.BoxGeometry(0.05, 0.08, 0.14);
+    const ringFinger = new THREE.Mesh(bentFingerGeo2, redMat);
+    ringFinger.position.set(-0.03, 0.26, -0.03); 
+    group.add(ringFinger);
+
+    // Web lines (black simple details)
+    const lineMeshV1 = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.26, 0.16), blackMat);
+    lineMeshV1.position.set(0.06, 0.125, 0);
+    group.add(lineMeshV1);
+
+    const lineMeshV2 = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.26, 0.16), blackMat);
+    lineMeshV2.position.set(-0.06, 0.125, 0);
+    group.add(lineMeshV2);
+    
+    const lineMeshH1 = new THREE.Mesh(new THREE.BoxGeometry(0.255, 0.01, 0.16), blackMat);
+    lineMeshH1.position.set(0, 0.12, 0);
+    group.add(lineMeshH1);
+
+    const lineMeshH2 = new THREE.Mesh(new THREE.BoxGeometry(0.255, 0.01, 0.16), blackMat);
+    lineMeshH2.position.set(0, 0.20, 0);
+    group.add(lineMeshH2);
+  } else if (isHose) {
     const isPerf = settingsManager.getSettings().performanceMode;
-    const MatClass = isPerf
-      ? THREE.MeshBasicMaterial
-      : THREE.MeshStandardMaterial;
+    const MatClass = isPerf ? THREE.MeshBasicMaterial : THREE.MeshStandardMaterial;
 
     // Hose model: A vibrant colored cylinder with a shiny nozzle at the end
     const hoseMat = new MatClass({
-      color: type === ItemType.WASHING_HOSE ? 0x3889f0 : 0xff5500, // blue for washer, orange for chocolate
-      ...(isPerf
-        ? {}
-        : {
-            emissive: type === ItemType.WASHING_HOSE ? 0x3889f0 : 0xff5500, // slight glow
-            emissiveIntensity: 0.2,
-            roughness: 0.4,
-            metalness: 0.1,
-          }),
+      color: type === ItemType.WASHING_HOSE ? 0x3889f0 : 0xFF5500, // blue for washer, orange for chocolate
+      ...(isPerf ? {} : {
+        emissive: type === ItemType.WASHING_HOSE ? 0x3889f0 : 0xFF5500, // slight glow
+        emissiveIntensity: 0.2,
+        roughness: 0.4,
+        metalness: 0.1
+      })
     });
     const darkMat = new MatClass({
       color: 0x333333, // dark plastic
-      ...(isPerf
-        ? {}
-        : {
-            roughness: 0.8,
-            metalness: 0.2,
-          }),
+      ...(isPerf ? {} : {
+        roughness: 0.8,
+        metalness: 0.2
+      })
     });
     const nozzleMat = new MatClass({
-      color: 0xdddddd, // shiny metal
-      ...(isPerf
-        ? {}
-        : {
-            roughness: 0.2,
-            metalness: 1.0,
-            emissive: 0x222222,
-          }),
+      color: 0xDDDDDD, // shiny metal
+      ...(isPerf ? {} : {
+        roughness: 0.2,
+        metalness: 1.0,
+        emissive: 0x222222
+      })
     });
 
     // Main body tube
@@ -166,7 +226,7 @@ export function createItemModel(type: ItemType): THREE.Group {
     // Trigger
     const triggerGeo = new THREE.BoxGeometry(0.04, 0.08, 0.08);
     const triggerMesh = new THREE.Mesh(triggerGeo, nozzleMat);
-    triggerMesh.position.set(0, 0.1, 0.12);
+    triggerMesh.position.set(0, 0.1, 0.12); 
     group.add(triggerMesh);
 
     // Accent ring near nozzle
@@ -178,7 +238,7 @@ export function createItemModel(type: ItemType): THREE.Group {
     const nozzleGeo = new THREE.CylinderGeometry(0.12, 0.07, 0.25, 12);
     const nozzleMesh = new THREE.Mesh(nozzleGeo, nozzleMat);
     nozzleMesh.position.y = 0.65;
-    nozzleMesh.name = "hose_nozzle";
+    nozzleMesh.name = 'hose_nozzle';
     group.add(nozzleMesh);
   } else if (isPickaxe) {
     // Handle (0.8 high, centered at origin)
@@ -186,63 +246,64 @@ export function createItemModel(type: ItemType): THREE.Group {
     const handle = new THREE.Mesh(handleGeo, handleMaterial);
     handle.position.y = 0.1;
     group.add(handle);
-
+    
     // Pickaxe head
     const headGroup = new THREE.Group();
     headGroup.position.y = 0.45; // Top of handle
-
+    
     // Central part (Connecting block)
     const headBlockGeo = new THREE.BoxGeometry(0.18, 0.2, 0.18);
     const headBlock = new THREE.Mesh(headBlockGeo, material);
     headGroup.add(headBlock);
-
+    
     const darkerMaterial = material.clone();
     darkerMaterial.color.multiplyScalar(0.7);
 
     // Curved head using multiple segments
-    for (let i = 0; i < 4; i++) {
-      const segGeo = new THREE.BoxGeometry(0.12, 0.12, 0.15);
-      const lSeg = new THREE.Mesh(segGeo, material);
-      const rSeg = new THREE.Mesh(segGeo, material);
-
-      const x = 0.1 + i * 0.1;
-      const y = -i * i * 0.02;
-
-      lSeg.position.set(-x, y, 0);
-      rSeg.position.set(x, y, 0);
-      lSeg.rotation.z = i * 0.15;
-      rSeg.rotation.z = -i * 0.15;
-
-      headGroup.add(lSeg);
-      headGroup.add(rSeg);
-
-      if (i === 3) {
-        // Tips
-        const tipGeo = new THREE.BoxGeometry(0.1, 0.1, 0.12);
-        const lTip = new THREE.Mesh(tipGeo, darkerMaterial);
-        const rTip = new THREE.Mesh(tipGeo, darkerMaterial);
-        lTip.position.set(-x - 0.08, y - 0.05, 0);
-        rTip.position.set(x + 0.08, y - 0.05, 0);
-        lTip.rotation.z = 0.8;
-        rTip.rotation.z = -0.8;
-        headGroup.add(lTip);
-        headGroup.add(rTip);
-      }
+    for(let i=0; i<4; i++) {
+        const segGeo = new THREE.BoxGeometry(0.12, 0.12, 0.15);
+        const lSeg = new THREE.Mesh(segGeo, material);
+        const rSeg = new THREE.Mesh(segGeo, material);
+        
+        const x = 0.1 + i * 0.1;
+        const y = -i * i * 0.02;
+        
+        lSeg.position.set(-x, y, 0);
+        rSeg.position.set(x, y, 0);
+        lSeg.rotation.z = i * 0.15;
+        rSeg.rotation.z = -i * 0.15;
+        
+        headGroup.add(lSeg);
+        headGroup.add(rSeg);
+        
+        if (i === 3) {
+            // Tips
+            const tipGeo = new THREE.BoxGeometry(0.1, 0.1, 0.12);
+            const lTip = new THREE.Mesh(tipGeo, darkerMaterial);
+            const rTip = new THREE.Mesh(tipGeo, darkerMaterial);
+            lTip.position.set(-x - 0.08, y - 0.05, 0);
+            rTip.position.set(x + 0.08, y - 0.05, 0);
+            lTip.rotation.z = 0.8;
+            rTip.rotation.z = -0.8;
+            headGroup.add(lTip);
+            headGroup.add(rTip);
+        }
     }
     group.add(headGroup);
+
   } else if (isSword) {
     // Handle (Grip)
     const gripGeo = new THREE.BoxGeometry(0.1, 0.35, 0.1);
     const grip = new THREE.Mesh(gripGeo, handleMaterial);
     grip.position.y = -0.15;
     group.add(grip);
-
+    
     // Pommel
     const pommelGeo = new THREE.BoxGeometry(0.14, 0.14, 0.14);
     const pommel = new THREE.Mesh(pommelGeo, material);
     pommel.position.y = -0.35;
     group.add(pommel);
-
+    
     // Crossguard
     const guardGeo = new THREE.BoxGeometry(0.55, 0.1, 0.12);
     const guard = new THREE.Mesh(guardGeo, material);
@@ -254,7 +315,7 @@ export function createItemModel(type: ItemType): THREE.Group {
     const guardDetail = new THREE.Mesh(guardDetailGeo, material);
     guardDetail.position.y = 0.05;
     group.add(guardDetail);
-
+    
     // Blade (Main part)
     const bladeGeo = new THREE.BoxGeometry(0.18, 0.9, 0.035); // Slightly thinner blade
     const blade = new THREE.Mesh(bladeGeo, material);
@@ -268,7 +329,7 @@ export function createItemModel(type: ItemType): THREE.Group {
     const ridge = new THREE.Mesh(ridgeGeo, ridgeMaterial);
     ridge.position.y = 0.55;
     group.add(ridge);
-
+    
     // Blade tip
     const tipGeo = new THREE.BoxGeometry(0.14, 0.14, 0.04);
     const tip = new THREE.Mesh(tipGeo, material);
@@ -281,7 +342,7 @@ export function createItemModel(type: ItemType): THREE.Group {
     const handle = new THREE.Mesh(handleGeo, handleMaterial);
     handle.position.y = 0.2;
     group.add(handle);
-
+    
     // Shovel head (more curved)
     const headGroup = new THREE.Group();
     headGroup.position.y = 0.75;
@@ -289,14 +350,14 @@ export function createItemModel(type: ItemType): THREE.Group {
     const bladeGeo = new THREE.BoxGeometry(0.3, 0.35, 0.04);
     const blade = new THREE.Mesh(bladeGeo, material);
     headGroup.add(blade);
-
+    
     // Curved edges
     const sideGeo = new THREE.BoxGeometry(0.04, 0.35, 0.08);
     const sideL = new THREE.Mesh(sideGeo, material);
     sideL.position.x = -0.13;
     sideL.rotation.y = 0.4;
     headGroup.add(sideL);
-
+    
     const sideR = new THREE.Mesh(sideGeo, material);
     sideR.position.x = 0.13;
     sideR.rotation.y = -0.4;
@@ -309,7 +370,7 @@ export function createItemModel(type: ItemType): THREE.Group {
     const tip = new THREE.Mesh(tipGeo, darkerMaterial);
     tip.position.y = 0.2;
     headGroup.add(tip);
-
+    
     group.add(headGroup);
   } else if (isAxe) {
     // Handle
@@ -317,15 +378,15 @@ export function createItemModel(type: ItemType): THREE.Group {
     const handle = new THREE.Mesh(handleGeo, handleMaterial);
     handle.position.y = 0.1;
     group.add(handle);
-
+    
     // Axe head (refined heavy look)
     const headGroup = new THREE.Group();
     headGroup.position.set(0.1, 0.65, 0);
-
+    
     const bitMainGeo = new THREE.BoxGeometry(0.3, 0.4, 0.15);
     const bitMain = new THREE.Mesh(bitMainGeo, material);
     headGroup.add(bitMain);
-
+    
     // Blade bit
     const bitGeo = new THREE.BoxGeometry(0.15, 0.5, 0.04);
     const darkerMaterial = material.clone();
@@ -333,27 +394,27 @@ export function createItemModel(type: ItemType): THREE.Group {
     const bit = new THREE.Mesh(bitGeo, darkerMaterial);
     bit.position.x = 0.15;
     headGroup.add(bit);
-
+    
     // Back bit
     const backGeo = new THREE.BoxGeometry(0.1, 0.2, 0.12);
     const back = new THREE.Mesh(backGeo, material);
     back.position.x = -0.15;
     headGroup.add(back);
-
+    
     group.add(headGroup);
   } else if (isStick) {
     const stickGroup = new THREE.Group();
     const geo = new THREE.BoxGeometry(0.06, 1.0, 0.06);
     const stick = new THREE.Mesh(geo, handleMaterial);
     stickGroup.add(stick);
-
+    
     // Some knots
     const knotGeo = new THREE.BoxGeometry(0.08, 0.05, 0.08);
-    for (let i = 0; i < 3; i++) {
-      const knot = new THREE.Mesh(knotGeo, handleMaterial);
-      knot.position.y = (Math.random() - 0.5) * 0.8;
-      knot.rotation.y = Math.random() * Math.PI;
-      stickGroup.add(knot);
+    for(let i=0; i<3; i++) {
+        const knot = new THREE.Mesh(knotGeo, handleMaterial);
+        knot.position.y = (Math.random()-0.5)*0.8;
+        knot.rotation.y = Math.random()*Math.PI;
+        stickGroup.add(knot);
     }
     group.add(stickGroup);
   } else if (isIngot) {
@@ -362,7 +423,7 @@ export function createItemModel(type: ItemType): THREE.Group {
     const baseGeo = new THREE.BoxGeometry(0.4, 0.12, 0.22);
     const ingot = new THREE.Mesh(baseGeo, material);
     ingotGroup.add(ingot);
-
+    
     const topGeo = new THREE.BoxGeometry(0.32, 0.04, 0.18);
     const top = new THREE.Mesh(topGeo, material);
     top.position.y = 0.08;
@@ -383,77 +444,69 @@ export function createItemModel(type: ItemType): THREE.Group {
   } else if (isGem) {
     const gemGroup = new THREE.Group();
     const isDiamond = type === ItemType.DIAMOND;
-
+    
     if (isDiamond) {
-      // Classic diamond shape (double pyramid/octahedron)
-      const topGeo = new THREE.CylinderGeometry(0, 0.2, 0.2, 4);
-      const top = new THREE.Mesh(topGeo, material);
-      top.position.y = 0.1;
-      gemGroup.add(top);
-
-      const bottomGeo = new THREE.CylinderGeometry(0.2, 0, 0.2, 4);
-      const bottom = new THREE.Mesh(bottomGeo, material);
-      bottom.position.y = -0.1;
-      gemGroup.add(bottom);
+        // Classic diamond shape (double pyramid/octahedron)
+        const topGeo = new THREE.CylinderGeometry(0, 0.2, 0.2, 4);
+        const top = new THREE.Mesh(topGeo, material);
+        top.position.y = 0.1;
+        gemGroup.add(top);
+        
+        const bottomGeo = new THREE.CylinderGeometry(0.2, 0, 0.2, 4);
+        const bottom = new THREE.Mesh(bottomGeo, material);
+        bottom.position.y = -0.1;
+        gemGroup.add(bottom);
     } else {
-      // Emerald (tall hexagonal prism)
-      const baseGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.4, 6);
-      const gem = new THREE.Mesh(baseGeo, material);
-      gemGroup.add(gem);
+        // Emerald (tall hexagonal prism)
+        const baseGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.4, 6);
+        const gem = new THREE.Mesh(baseGeo, material);
+        gemGroup.add(gem);
     }
-
+    
     // Shine detail
     const shineMaterial = new THREE.MeshStandardMaterial({
-      color: "#FFFFFF",
-      emissive: "#FFFFFF",
+      color: '#FFFFFF',
+      emissive: '#FFFFFF',
       emissiveIntensity: 0.5,
       transparent: true,
-      opacity: 0.8,
+      opacity: 0.8
     });
     const shineGeo = new THREE.BoxGeometry(0.04, 0.15, 0.04);
     const shine = new THREE.Mesh(shineGeo, shineMaterial);
     shine.position.set(0.08, 0.08, 0.08);
     gemGroup.add(shine);
-
+    
     group.add(gemGroup);
   } else if (isLump) {
     // Irregular lump for coal, redstone, lapis, seeds
     const lumpGroup = new THREE.Group();
-
+    
     // Use several small boxes for "rough" look
     const count = type === ItemType.SEEDS ? 8 : 4;
     const spread = type === ItemType.SEEDS ? 0.15 : 0.2;
     const size = type === ItemType.SEEDS ? 0.05 : 0.15;
-
-    for (let i = 0; i < count; i++) {
-      const itemGeo = new THREE.BoxGeometry(size, size, size);
-      const piece = new THREE.Mesh(itemGeo, material);
-      piece.position.set(
-        (Math.random() - 0.5) * spread,
-        (Math.random() - 0.5) * spread,
-        (Math.random() - 0.5) * spread,
-      );
-      piece.rotation.set(
-        Math.random() * Math.PI,
-        Math.random() * Math.PI,
-        Math.random() * Math.PI,
-      );
-      lumpGroup.add(piece);
+    
+    for(let i=0; i<count; i++) {
+        const itemGeo = new THREE.BoxGeometry(size, size, size);
+        const piece = new THREE.Mesh(itemGeo, material);
+        piece.position.set(
+            (Math.random()-0.5)*spread,
+            (Math.random()-0.5)*spread,
+            (Math.random()-0.5)*spread
+        );
+        piece.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
+        lumpGroup.add(piece);
     }
 
     if (type === ItemType.LAPIS_LAZULI || type === ItemType.REDSTONE) {
-      // Add some "sparkle" for ores
-      const sparkMat = new THREE.MeshStandardMaterial({
-        color: "#FFFFFF",
-        emissive: "#FFFFFF",
-        emissiveIntensity: 0.3,
-      });
-      const sparkGeo = new THREE.BoxGeometry(0.04, 0.04, 0.04);
-      const spark = new THREE.Mesh(sparkGeo, sparkMat);
-      spark.position.set(0.1, 0.1, 0.1);
-      lumpGroup.add(spark);
+        // Add some "sparkle" for ores
+        const sparkMat = new THREE.MeshStandardMaterial({ color: '#FFFFFF', emissive: '#FFFFFF', emissiveIntensity: 0.3 });
+        const sparkGeo = new THREE.BoxGeometry(0.04, 0.04, 0.04);
+        const spark = new THREE.Mesh(sparkGeo, sparkMat);
+        spark.position.set(0.1, 0.1, 0.1);
+        lumpGroup.add(spark);
     }
-
+    
     group.add(lumpGroup);
   } else if (isFood) {
     const isApple = type === ItemType.APPLE || type === ItemType.GOLDEN_APPLE;
@@ -462,9 +515,9 @@ export function createItemModel(type: ItemType): THREE.Group {
       const apple = new THREE.Mesh(appleGeo, material);
       apple.scale.set(1, 0.85, 1);
       group.add(apple);
-
+      
       const stemGeo = new THREE.BoxGeometry(0.04, 0.15, 0.04);
-      const stemMat = new THREE.MeshStandardMaterial({ color: "#4A2B00" });
+      const stemMat = new THREE.MeshStandardMaterial({ color: '#4A2B00' });
       const stem = new THREE.Mesh(stemGeo, stemMat);
       stem.position.y = 0.18;
       stem.rotation.z = 0.2;
@@ -474,14 +527,14 @@ export function createItemModel(type: ItemType): THREE.Group {
       const breadGeo = new THREE.BoxGeometry(0.4, 0.18, 0.28);
       const bread = new THREE.Mesh(breadGeo, material);
       breadGroup.add(bread);
-
+      
       const darkerMat = material.clone();
       darkerMat.color.multiplyScalar(0.7);
       const slitGeo = new THREE.BoxGeometry(0.06, 0.02, 0.3);
-      for (let i = 0; i < 3; i++) {
-        const slit = new THREE.Mesh(slitGeo, darkerMat);
-        slit.position.set(-0.12 + i * 0.12, 0.09, 0);
-        breadGroup.add(slit);
+      for(let i=0; i<3; i++) {
+          const slit = new THREE.Mesh(slitGeo, darkerMat);
+          slit.position.set(-0.12 + i*0.12, 0.09, 0);
+          breadGroup.add(slit);
       }
       group.add(breadGroup);
     } else {
@@ -490,15 +543,15 @@ export function createItemModel(type: ItemType): THREE.Group {
       const meatGeo = new THREE.BoxGeometry(0.4, 0.15, 0.3);
       const meat = new THREE.Mesh(meatGeo, material);
       meatGroup.add(meat);
-
-      const boneMat = new THREE.MeshStandardMaterial({ color: "#EEEEEE" });
+      
+      const boneMat = new THREE.MeshStandardMaterial({ color: '#EEEEEE' });
       const boneGeo = new THREE.BoxGeometry(0.12, 0.1, 0.45);
       const bone = new THREE.Mesh(boneGeo, boneMat);
       bone.position.x = -0.15;
       meatGroup.add(bone);
 
       // Fat detail
-      const fatMat = new THREE.MeshStandardMaterial({ color: "#FFFFFF" });
+      const fatMat = new THREE.MeshStandardMaterial({ color: '#FFFFFF' });
       const fatGeo = new THREE.BoxGeometry(0.1, 0.16, 0.2);
       const fat = new THREE.Mesh(fatGeo, fatMat);
       fat.position.set(0.1, 0, 0.08);
@@ -512,24 +565,24 @@ export function createItemModel(type: ItemType): THREE.Group {
     const handle = new THREE.Mesh(handleGeo, handleMaterial);
     handle.rotation.z = -Math.PI / 4;
     rodGroup.add(handle);
-
+    
     // Reel
     const reelGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.1, 8);
     const reel = new THREE.Mesh(reelGeo, material);
     reel.position.set(-0.1, -0.1, 0);
-    reel.rotation.z = Math.PI / 2;
+    reel.rotation.z = Math.PI/2;
     rodGroup.add(reel);
 
     // Line
     const lineGeo = new THREE.BoxGeometry(0.01, 1.2, 0.01);
-    const lineMat = new THREE.MeshStandardMaterial({ color: "#eeeeee" });
+    const lineMat = new THREE.MeshStandardMaterial({ color: '#eeeeee' });
     const line = new THREE.Mesh(lineGeo, lineMat);
     line.position.set(0.42, 0.35, 0);
     rodGroup.add(line);
-
+    
     // Float
     const floatGeo = new THREE.SphereGeometry(0.05, 8, 8);
-    const floatMat = new THREE.MeshStandardMaterial({ color: "#FF5555" });
+    const floatMat = new THREE.MeshStandardMaterial({ color: '#FF5555' });
     const float = new THREE.Mesh(floatGeo, floatMat);
     float.position.set(0.42, -0.25, 0);
     rodGroup.add(float);
@@ -539,77 +592,60 @@ export function createItemModel(type: ItemType): THREE.Group {
     const bowGroup = new THREE.Group();
     const voxelSize = 0.08;
     const vGeo = new THREE.BoxGeometry(voxelSize, voxelSize, voxelSize);
-
+    
     // Pixelated Minecraft Bow Shape
     const voxels = [
-      [1, 6],
-      [1, 7],
-      [1, 8],
-      [2, 4],
-      [2, 5],
-      [2, 9],
-      [2, 10], // Curve
-      [3, 3],
-      [3, 11],
-      [4, 2],
-      [4, 12],
-      [5, 2],
-      [5, 12],
-      [6, 1],
-      [6, 13],
-      [7, 1],
-      [7, 13],
+      [1, 6], [1, 7], [1, 8],
+      [2, 4], [2, 5], [2, 9], [2, 10], // Curve
+      [3, 3], [3, 11],
+      [4, 2], [4, 12],
+      [5, 2], [5, 12],
+      [6, 1], [6, 13],
+      [7, 1], [7, 13]
     ];
-
+    
     for (const pos of voxels) {
-      const v = new THREE.Mesh(vGeo, handleMaterial);
-      // Center the bow vertically and horizontally based on 16x16
-      // x offset ~ -4, y offset ~ -7 to center handle roughly at (0,0)
-      v.position.set((pos[0] - 4) * voxelSize, (pos[1] - 7) * voxelSize, 0);
-      bowGroup.add(v);
+        const v = new THREE.Mesh(vGeo, handleMaterial);
+        // Center the bow vertically and horizontally based on 16x16
+        // x offset ~ -4, y offset ~ -7 to center handle roughly at (0,0)
+        v.position.set((pos[0] - 4) * voxelSize, (pos[1] - 7) * voxelSize, 0);
+        bowGroup.add(v);
     }
-
+    
     // String
     const stringLength = 12 * voxelSize;
     const stringGeo = new THREE.BoxGeometry(0.01, stringLength, 0.01);
-    const stringMat = new THREE.MeshStandardMaterial({ color: "#ffffff" });
+    const stringMat = new THREE.MeshStandardMaterial({ color: '#ffffff' });
     const string = new THREE.Mesh(stringGeo, stringMat);
     string.position.set((7 - 4) * voxelSize, 0, 0);
-    string.name = "bow_string"; // Helpful for animation
+    string.name = 'bow_string'; // Helpful for animation
     bowGroup.add(string);
-
+    
     // Add arrow model to bow (hidden by default)
     const arrowGroup = new THREE.Group();
-    arrowGroup.name = "bow_arrow";
+    arrowGroup.name = 'bow_arrow';
     arrowGroup.visible = false;
-
+    
     const shaftGeo = new THREE.BoxGeometry(0.03, 0.9, 0.03);
     const shaft = new THREE.Mesh(shaftGeo, handleMaterial);
     arrowGroup.add(shaft);
-
+    
     const tipGeo = new THREE.ConeGeometry(0.06, 0.2, 4);
-    const tipMat = new THREE.MeshStandardMaterial({ color: "#666666" });
+    const tipMat = new THREE.MeshStandardMaterial({ color: '#666666' });
     const tip = new THREE.Mesh(tipGeo, tipMat);
     tip.position.y = 0.45;
     arrowGroup.add(tip);
-
-    const fletchMat = new THREE.MeshStandardMaterial({
-      color: "#EEEEEE",
-      side: THREE.DoubleSide,
-    });
-    for (let i = 0; i < 3; i++) {
-      const fletchGeo = new THREE.PlaneGeometry(0.12, 0.2);
-      const fletch = new THREE.Mesh(fletchGeo, fletchMat);
-      const angle = (i / 3) * Math.PI * 2;
-      fletch.position.set(
-        Math.cos(angle) * 0.05,
-        -0.35,
-        Math.sin(angle) * 0.05,
-      );
-      fletch.rotation.y = angle;
-      arrowGroup.add(fletch);
+    
+    const fletchMat = new THREE.MeshStandardMaterial({ color: '#EEEEEE', side: THREE.DoubleSide });
+    for(let i=0; i<3; i++) {
+        const fletchGeo = new THREE.PlaneGeometry(0.12, 0.2);
+        const fletch = new THREE.Mesh(fletchGeo, fletchMat);
+        const angle = (i/3) * Math.PI * 2;
+        fletch.position.set(Math.cos(angle)*0.05, -0.35, Math.sin(angle)*0.05);
+        fletch.rotation.y = angle;
+        arrowGroup.add(fletch);
     }
-
+    
     // Position/rotate the arrow to seat in the bow
     // Arrow normally points UP (+Y). The bow fires in the generic forward direction.
     // The player's first-person hand has rotation applied.
@@ -617,38 +653,31 @@ export function createItemModel(type: ItemType): THREE.Group {
     arrowGroup.rotation.z = Math.PI / 2;
     // We will adjust arrow's position along X during charge animation.
     arrowGroup.position.set(0.1, 0, 0);
-
+    
     bowGroup.add(arrowGroup);
-
+    
     group.add(bowGroup);
   } else if (isArrow) {
     const arrowGroup = new THREE.Group();
     const shaftGeo = new THREE.BoxGeometry(0.03, 0.9, 0.03);
     const shaft = new THREE.Mesh(shaftGeo, handleMaterial);
     arrowGroup.add(shaft);
-
+    
     const tipGeo = new THREE.ConeGeometry(0.06, 0.2, 4);
-    const tipMat = new THREE.MeshStandardMaterial({ color: "#666666" });
+    const tipMat = new THREE.MeshStandardMaterial({ color: '#666666' });
     const tip = new THREE.Mesh(tipGeo, tipMat);
     tip.position.y = 0.45;
     arrowGroup.add(tip);
-
+    
     // Fletching (Feathers)
-    const fletchMat = new THREE.MeshStandardMaterial({
-      color: "#EEEEEE",
-      side: THREE.DoubleSide,
-    });
-    for (let i = 0; i < 3; i++) {
-      const fletchGeo = new THREE.PlaneGeometry(0.12, 0.2);
-      const fletch = new THREE.Mesh(fletchGeo, fletchMat);
-      const angle = (i / 3) * Math.PI * 2;
-      fletch.position.set(
-        Math.cos(angle) * 0.05,
-        -0.35,
-        Math.sin(angle) * 0.05,
-      );
-      fletch.rotation.y = angle;
-      arrowGroup.add(fletch);
+    const fletchMat = new THREE.MeshStandardMaterial({ color: '#EEEEEE', side: THREE.DoubleSide });
+    for(let i=0; i<3; i++) {
+        const fletchGeo = new THREE.PlaneGeometry(0.12, 0.2);
+        const fletch = new THREE.Mesh(fletchGeo, fletchMat);
+        const angle = (i/3) * Math.PI * 2;
+        fletch.position.set(Math.cos(angle)*0.05, -0.35, Math.sin(angle)*0.05);
+        fletch.rotation.y = angle;
+        arrowGroup.add(fletch);
     }
     group.add(arrowGroup);
   } else if (isBucket) {
@@ -656,26 +685,25 @@ export function createItemModel(type: ItemType): THREE.Group {
     const bodyGeo = new THREE.CylinderGeometry(0.18, 0.14, 0.35, 12, 1, true);
     const bucket = new THREE.Mesh(bodyGeo, material);
     bucketGroup.add(bucket);
-
+    
     const bottomGeo = new THREE.CircleGeometry(0.14, 12);
     const bottom = new THREE.Mesh(bottomGeo, material);
     bottom.rotation.x = Math.PI / 2;
     bottom.position.y = -0.175;
     bucketGroup.add(bottom);
-
+    
     const handleGeo = new THREE.TorusGeometry(0.18, 0.015, 8, 12, Math.PI);
     const handle = new THREE.Mesh(handleGeo, material);
     handle.position.y = 0.15;
     bucketGroup.add(handle);
 
     if (type !== ItemType.BUCKET) {
-      const liquidColor =
-        type === ItemType.WATER_BUCKET ? "#3F76E4" : "#F07613";
+      const liquidColor = type === ItemType.WATER_BUCKET ? '#3F76E4' : '#F07613';
       const liquidGeo = new THREE.CylinderGeometry(0.16, 0.16, 0.05, 12);
-      const liquidMat = new THREE.MeshStandardMaterial({
-        color: liquidColor,
+      const liquidMat = new THREE.MeshStandardMaterial({ 
+        color: liquidColor, 
         transparent: type === ItemType.WATER_BUCKET,
-        opacity: 0.8,
+        opacity: 0.8
       });
       const liquid = new THREE.Mesh(liquidGeo, liquidMat);
       liquid.position.y = 0.1;
@@ -687,24 +715,20 @@ export function createItemModel(type: ItemType): THREE.Group {
     const pearlGeo = new THREE.SphereGeometry(0.2, 16, 16);
     const pearl = new THREE.Mesh(pearlGeo, material);
     pearlGroup.add(pearl);
-
+    
     // Pupil/Eye detail
     const pupilGeo = new THREE.BoxGeometry(0.22, 0.08, 0.12);
-    const pupilMat = new THREE.MeshStandardMaterial({
-      color: "#002200",
-      emissive: "#004400",
-      emissiveIntensity: 1.0,
-    });
+    const pupilMat = new THREE.MeshStandardMaterial({ color: '#002200', emissive: '#004400', emissiveIntensity: 1.0 });
     const pupil = new THREE.Mesh(pupilGeo, pupilMat);
     pearlGroup.add(pupil);
 
     // Inner glow
-    const glowMat = new THREE.MeshStandardMaterial({
-      color: "#177b6d",
-      emissive: "#177b6d",
-      emissiveIntensity: 0.8,
-      transparent: true,
-      opacity: 0.6,
+    const glowMat = new THREE.MeshStandardMaterial({ 
+        color: '#177b6d', 
+        emissive: '#177b6d', 
+        emissiveIntensity: 0.8,
+        transparent: true,
+        opacity: 0.6
     });
     const glowGeo = new THREE.SphereGeometry(0.12, 12, 12);
     const glow = new THREE.Mesh(glowGeo, glowMat);
@@ -715,12 +739,12 @@ export function createItemModel(type: ItemType): THREE.Group {
     const shaftGeo = new THREE.BoxGeometry(0.08, 0.8, 0.08);
     const shaft = new THREE.Mesh(shaftGeo, material);
     group.add(shaft);
-
+    
     const endGeo = new THREE.BoxGeometry(0.15, 0.15, 0.2);
     const end1 = new THREE.Mesh(endGeo, material);
     end1.position.y = 0.4;
     group.add(end1);
-
+    
     const end2 = new THREE.Mesh(endGeo, material);
     end2.position.y = -0.4;
     group.add(end2);
@@ -728,7 +752,7 @@ export function createItemModel(type: ItemType): THREE.Group {
     const quillGeo = new THREE.BoxGeometry(0.02, 0.6, 0.02);
     const quill = new THREE.Mesh(quillGeo, material);
     group.add(quill);
-
+    
     const vaneGeo = new THREE.BoxGeometry(0.2, 0.5, 0.01);
     const vane = new THREE.Mesh(vaneGeo, material);
     vane.position.y = 0.1;
@@ -738,7 +762,7 @@ export function createItemModel(type: ItemType): THREE.Group {
     const coin = new THREE.Mesh(geo, material);
     coin.rotation.x = Math.PI / 2;
     group.add(coin);
-
+    
     const innerGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.05, 16);
     const darkerMaterial = material.clone();
     darkerMaterial.color.multiplyScalar(0.8);
@@ -750,8 +774,8 @@ export function createItemModel(type: ItemType): THREE.Group {
     const aoteMaterial = new THREE.ShaderMaterial({
       uniforms: {
         time: { value: 0 },
-        baseColor: { value: new THREE.Color("#55FFFF") },
-        glowColor: { value: new THREE.Color("#FFFFFF") },
+        baseColor: { value: new THREE.Color('#55FFFF') },
+        glowColor: { value: new THREE.Color('#FFFFFF') }
       },
       vertexShader: `
         varying vec2 vUv;
@@ -781,9 +805,9 @@ export function createItemModel(type: ItemType): THREE.Group {
         }
       `,
       transparent: true,
-      side: THREE.DoubleSide,
+      side: THREE.DoubleSide
     });
-
+    
     const bladeGeo = new THREE.BoxGeometry(0.12, 1.2, 0.04);
     const blade = new THREE.Mesh(bladeGeo, aoteMaterial);
     blade.position.y = 0.6;
@@ -794,189 +818,162 @@ export function createItemModel(type: ItemType): THREE.Group {
     const guard = new THREE.Mesh(guardGeo, aoteMaterial);
     guard.position.y = 0.05;
     group.add(guard);
-
+    
     // Core crystal
     const crystalGeo = new THREE.OctahedronGeometry(0.1);
-    const crystalMat = new THREE.MeshStandardMaterial({
-      color: "#FFFFFF",
-      emissive: "#FFFFFF",
-      emissiveIntensity: 1.0,
-    });
+    const crystalMat = new THREE.MeshStandardMaterial({ color: '#FFFFFF', emissive: '#FFFFFF', emissiveIntensity: 1.0 });
     const crystal = new THREE.Mesh(crystalGeo, crystalMat);
     crystal.position.y = 0.05;
     group.add(crystal);
-
+    
     const gripGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.3);
     const grip = new THREE.Mesh(gripGeo, handleMaterial);
     grip.position.y = -0.15;
     group.add(grip);
-
+    
     // Floating "energy" bits
     const spikes: THREE.Mesh[] = [];
-    for (let i = 0; i < 4; i++) {
-      const spikeGeo = new THREE.ConeGeometry(0.02, 0.15, 4);
-      const spike = new THREE.Mesh(spikeGeo, aoteMaterial);
-      const angle = (i / 4) * Math.PI * 2;
-      spike.position.set(
-        Math.cos(angle) * 0.18,
-        0.4 + i * 0.2,
-        Math.sin(angle) * 0.18,
-      );
-      spike.rotation.x = Math.PI / 2;
-      spikes.push(spike);
-      group.add(spike);
+    for(let i=0; i<4; i++) {
+        const spikeGeo = new THREE.ConeGeometry(0.02, 0.15, 4);
+        const spike = new THREE.Mesh(spikeGeo, aoteMaterial);
+        const angle = (i / 4) * Math.PI * 2;
+        spike.position.set(Math.cos(angle)*0.18, 0.4 + i*0.2, Math.sin(angle)*0.18);
+        spike.rotation.x = Math.PI / 2;
+        spikes.push(spike);
+        group.add(spike);
     }
 
     const updateFn = (time: number) => {
-      aoteMaterial.uniforms.time.value = time;
-
-      // Intense Heartbeat pulse for the crystal
-      const heartbeat = Math.sin(time * 8) * 0.5 + 0.5;
-      const crystalScale = 1.0 + heartbeat * 0.6;
-      crystal.scale.set(crystalScale, crystalScale, crystalScale);
-      crystal.rotation.y = time * 5;
-      crystal.rotation.x = Math.sin(time * 2) * 1.5;
-
-      // Spikes orbit with varying speeds and distances, creating a chaotic energy field
-      spikes.forEach((spike, i) => {
-        const speed = 3.0 + i;
-        const angle = (i / 4) * Math.PI * 2 + time * speed;
-        const radius = 0.15 + Math.sin(time * 4 + i) * 0.08;
-        const yOffset = Math.cos(time * 6 + i) * 0.3;
-
-        spike.position.set(
-          Math.cos(angle) * radius,
-          0.5 + yOffset,
-          Math.sin(angle) * radius,
-        );
-
-        // Rapid chaotic spinning
-        spike.rotation.y = time * 10;
-        spike.rotation.z = Math.cos(time * 5 + i) * 2.0;
-        spike.rotation.x = Math.sin(time * 8 + i) * 1.5;
-      });
-
-      // Blade pulsating energy scale effect
-      const bladeEnergy = Math.sin(time * 12) * 0.05 + 1.0;
-      blade.scale.set(bladeEnergy, 1.0, bladeEnergy);
+        aoteMaterial.uniforms.time.value = time;
+        
+        // Intense Heartbeat pulse for the crystal
+        const heartbeat = Math.sin(time * 8) * 0.5 + 0.5;
+        const crystalScale = 1.0 + heartbeat * 0.6;
+        crystal.scale.set(crystalScale, crystalScale, crystalScale);
+        crystal.rotation.y = time * 5;
+        crystal.rotation.x = Math.sin(time * 2) * 1.5;
+        
+        // Spikes orbit with varying speeds and distances, creating a chaotic energy field
+        spikes.forEach((spike, i) => {
+            const speed = 3.0 + i;
+            const angle = (i / 4) * Math.PI * 2 + time * speed;
+            const radius = 0.15 + Math.sin(time * 4 + i) * 0.08;
+            const yOffset = Math.cos(time * 6 + i) * 0.3;
+            
+            spike.position.set(Math.cos(angle) * radius, 0.5 + yOffset, Math.sin(angle) * radius);
+            
+            // Rapid chaotic spinning
+            spike.rotation.y = time * 10;
+            spike.rotation.z = Math.cos(time * 5 + i) * 2.0;
+            spike.rotation.x = Math.sin(time * 8 + i) * 1.5;
+        });
+        
+        // Blade pulsating energy scale effect
+        const bladeEnergy = Math.sin(time * 12) * 0.05 + 1.0;
+        blade.scale.set(bladeEnergy, 1.0, bladeEnergy);
     };
     group.userData.update = updateFn;
     animatedItems.push({ mesh: group, update: updateFn });
   } else if (isMinion) {
     // 3D Minion Model
     const minionGroup = new THREE.Group();
-
+    
     // Body (Yellow)
     const bodyGeo = new THREE.BoxGeometry(0.3, 0.4, 0.3);
-    const minionBodyMat = new THREE.MeshStandardMaterial({ color: "#FFFF55" });
+    const minionBodyMat = new THREE.MeshStandardMaterial({ color: '#FFFF55' });
     const body = new THREE.Mesh(bodyGeo, minionBodyMat);
     minionGroup.add(body);
-
+    
     // Overalls (Blue)
     const overallsGeo = new THREE.BoxGeometry(0.32, 0.15, 0.32);
-    const overallsMat = new THREE.MeshStandardMaterial({ color: "#5555FF" });
+    const overallsMat = new THREE.MeshStandardMaterial({ color: '#5555FF' });
     const overalls = new THREE.Mesh(overallsGeo, overallsMat);
     overalls.position.y = -0.13;
     minionGroup.add(overalls);
-
+    
     // Eyes/Goggles
     const goggleGeo = new THREE.BoxGeometry(0.33, 0.08, 0.1);
-    const goggleMat = new THREE.MeshStandardMaterial({ color: "#111111" });
+    const goggleMat = new THREE.MeshStandardMaterial({ color: '#111111' });
     const goggles = new THREE.Mesh(goggleGeo, goggleMat);
     goggles.position.set(0, 0.05, 0.12);
     minionGroup.add(goggles);
-
+    
     const eyeGeo = new THREE.BoxGeometry(0.05, 0.05, 0.02);
-    const eyeMat = new THREE.MeshStandardMaterial({ color: "#FFFFFF" });
+    const eyeMat = new THREE.MeshStandardMaterial({ color: '#FFFFFF' });
     const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
     leftEye.position.set(-0.06, 0.05, 0.18);
     minionGroup.add(leftEye);
-
+    
     const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
     rightEye.position.set(0.06, 0.05, 0.18);
     minionGroup.add(rightEye);
-
+    
     group.add(minionGroup);
   } else if (isWheat) {
     // 3D Wheat Bundle Model
     const bundleGroup = new THREE.Group();
-    const wheatMat = new THREE.MeshStandardMaterial({ color: "#E3B044" });
+    const wheatMat = new THREE.MeshStandardMaterial({ color: '#E3B044' });
     const stalkGeo = new THREE.BoxGeometry(0.04, 0.6, 0.04);
-
-    for (let i = 0; i < 5; i++) {
-      const stalk = new THREE.Mesh(stalkGeo, wheatMat);
-      stalk.position.set(
-        (Math.random() - 0.5) * 0.15,
-        0,
-        (Math.random() - 0.5) * 0.15,
-      );
-      stalk.rotation.set(
-        (Math.random() - 0.5) * 0.3,
-        0,
-        (Math.random() - 0.5) * 0.3,
-      );
-      bundleGroup.add(stalk);
+    
+    for(let i=0; i<5; i++) {
+        const stalk = new THREE.Mesh(stalkGeo, wheatMat);
+        stalk.position.set((Math.random()-0.5)*0.15, 0, (Math.random()-0.5)*0.15);
+        stalk.rotation.set((Math.random()-0.5)*0.3, 0, (Math.random()-0.5)*0.3);
+        bundleGroup.add(stalk);
     }
-
+    
     // Tie
     const tieGeo = new THREE.TorusGeometry(0.08, 0.02, 4, 8);
-    const tieMat = new THREE.MeshStandardMaterial({ color: "#8B5A2B" });
+    const tieMat = new THREE.MeshStandardMaterial({ color: '#8B5A2B' });
     const tie = new THREE.Mesh(tieGeo, tieMat);
     tie.rotation.x = Math.PI / 2;
     bundleGroup.add(tie);
-
+    
     group.add(bundleGroup);
   } else if (isCane) {
     // 3D Sugar Cane Model
     const caneGroup = new THREE.Group();
-    const caneMat = new THREE.MeshStandardMaterial({ color: "#68B936" });
+    const caneMat = new THREE.MeshStandardMaterial({ color: '#68B936' });
     const segmentGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.8);
-
-    for (let i = 0; i < 3; i++) {
-      const cane = new THREE.Mesh(segmentGeo, caneMat);
-      cane.position.set(-0.1 + i * 0.1, 0, 0);
-      cane.rotation.z = (i - 1) * 0.1;
-      caneGroup.add(cane);
-
-      // Darker green lines for segments
-      const ringGeo = new THREE.TorusGeometry(0.065, 0.01, 4, 8);
-      const ringMat = new THREE.MeshStandardMaterial({ color: "#4A8522" });
-      for (let j = 0; j < 3; j++) {
-        const ring = new THREE.Mesh(ringGeo, ringMat);
-        ring.position.set(-0.1 + i * 0.1, -0.3 + j * 0.3, 0);
-        ring.rotation.x = Math.PI / 2;
-        caneGroup.add(ring);
-      }
+    
+    for(let i=0; i<3; i++) {
+        const cane = new THREE.Mesh(segmentGeo, caneMat);
+        cane.position.set(-0.1 + i*0.1, 0, 0);
+        cane.rotation.z = (i-1)*0.1;
+        caneGroup.add(cane);
+        
+        // Darker green lines for segments
+        const ringGeo = new THREE.TorusGeometry(0.065, 0.01, 4, 8);
+        const ringMat = new THREE.MeshStandardMaterial({ color: '#4A8522' });
+        for(let j=0; j<3; j++) {
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.position.set(-0.1 + i*0.1, -0.3 + j*0.3, 0);
+            ring.rotation.x = Math.PI / 2;
+            caneGroup.add(ring);
+        }
     }
     group.add(caneGroup);
   } else if (isLily) {
     const lilyGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.02, 16);
-    const lilyMat = new THREE.MeshStandardMaterial({ color: "#317424" });
+    const lilyMat = new THREE.MeshStandardMaterial({ color: '#317424' });
     const lily = new THREE.Mesh(lilyGeo, lilyMat);
-
+    
     // Add a small notch
     const notchGeo = new THREE.BoxGeometry(0.2, 0.03, 0.2);
     const notch = new THREE.Mesh(notchGeo, lilyMat);
     notch.position.set(0.25, 0, 0);
     lily.add(notch); // This won't work well for union, but for a simple model it's okay
-
+    
     group.add(lily);
   } else if (isLantern) {
     const lanternGroup = new THREE.Group();
     const bodyGeo = new THREE.BoxGeometry(0.2, 0.25, 0.2);
-    const bodyMat = new THREE.MeshStandardMaterial({
-      color: "#3c322b",
-      metalness: 0.8,
-    });
+    const bodyMat = new THREE.MeshStandardMaterial({ color: '#3c322b', metalness: 0.8 });
     const body = new THREE.Mesh(bodyGeo, bodyMat);
     lanternGroup.add(body);
-
+    
     const glowGeo = new THREE.BoxGeometry(0.12, 0.15, 0.12);
-    const glowMat = new THREE.MeshStandardMaterial({
-      color: "#ffcc00",
-      emissive: "#ffcc00",
-      emissiveIntensity: 1.0,
-    });
+    const glowMat = new THREE.MeshStandardMaterial({ color: '#ffcc00', emissive: '#ffcc00', emissiveIntensity: 1.0 });
     const glow = new THREE.Mesh(glowGeo, glowMat);
     lanternGroup.add(glow);
 
@@ -984,7 +981,7 @@ export function createItemModel(type: ItemType): THREE.Group {
     const handle = new THREE.Mesh(handleGeo, bodyMat);
     handle.position.y = 0.15;
     lanternGroup.add(handle);
-
+    
     group.add(lanternGroup);
   } else if (isCampfire) {
     const fireGroup = new THREE.Group();
@@ -997,48 +994,36 @@ export function createItemModel(type: ItemType): THREE.Group {
     fireGroup.add(log2);
 
     const flameGeo = new THREE.ConeGeometry(0.15, 0.3, 4);
-    const flameMat = new THREE.MeshStandardMaterial({
-      color: "#ff4400",
-      emissive: "#ff4400",
-      emissiveIntensity: 1.0,
-    });
+    const flameMat = new THREE.MeshStandardMaterial({ color: '#ff4400', emissive: '#ff4400', emissiveIntensity: 1.0 });
     const flame = new THREE.Mesh(flameGeo, flameMat);
     flame.position.y = 0.15;
     fireGroup.add(flame);
-
+    
     group.add(fireGroup);
   } else if (isMushroom) {
     const mushGroup = new THREE.Group();
     const stemGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.2, 8);
-    const stemMat = new THREE.MeshStandardMaterial({ color: "#d1ccb6" });
+    const stemMat = new THREE.MeshStandardMaterial({ color: '#d1ccb6' });
     const stem = new THREE.Mesh(stemGeo, stemMat);
     mushGroup.add(stem);
-
-    const capGeo = new THREE.SphereGeometry(
-      0.2,
-      12,
-      12,
-      0,
-      Math.PI * 2,
-      0,
-      Math.PI / 2,
-    );
+    
+    const capGeo = new THREE.SphereGeometry(0.2, 12, 12, 0, Math.PI * 2, 0, Math.PI / 2);
     const cap = new THREE.Mesh(capGeo, material);
     cap.position.y = 0.1;
     mushGroup.add(cap);
 
     if (type === ItemType.MUSHROOM_RED) {
-      // Spots
-      const spotGeo = new THREE.BoxGeometry(0.04, 0.04, 0.04);
-      const spotMat = new THREE.MeshStandardMaterial({ color: "#FFFFFF" });
-      for (let i = 0; i < 4; i++) {
-        const spot = new THREE.Mesh(spotGeo, spotMat);
-        const angle = (i / 4) * Math.PI * 2;
-        spot.position.set(Math.cos(angle) * 0.15, 0.2, Math.sin(angle) * 0.15);
-        mushGroup.add(spot);
-      }
+        // Spots
+        const spotGeo = new THREE.BoxGeometry(0.04, 0.04, 0.04);
+        const spotMat = new THREE.MeshStandardMaterial({ color: '#FFFFFF' });
+        for(let i=0; i<4; i++) {
+            const spot = new THREE.Mesh(spotGeo, spotMat);
+            const angle = (i/4) * Math.PI * 2;
+            spot.position.set(Math.cos(angle)*0.15, 0.2, Math.sin(angle)*0.15);
+            mushGroup.add(spot);
+        }
     }
-
+    
     group.add(mushGroup);
   } else if (isTorch) {
     const torchGroup = new THREE.Group();
@@ -1046,62 +1031,51 @@ export function createItemModel(type: ItemType): THREE.Group {
     const stickGeo = new THREE.BoxGeometry(0.1, 0.7, 0.1);
     const stick = new THREE.Mesh(stickGeo, handleMaterial);
     torchGroup.add(stick);
-
+    
     // Top burnt part
     const burntGeo = new THREE.BoxGeometry(0.11, 0.15, 0.11);
-    const burntMat = new THREE.MeshStandardMaterial({ color: "#2b1b0a" });
+    const burntMat = new THREE.MeshStandardMaterial({ color: '#2b1b0a' });
     const burnt = new THREE.Mesh(burntGeo, burntMat);
     burnt.position.y = 0.3;
     torchGroup.add(burnt);
-
+    
     // Flame (Glowing bits)
-    const flameMat = new THREE.MeshStandardMaterial({
-      color: "#FF9800",
-      emissive: "#FF9800",
+    const flameMat = new THREE.MeshStandardMaterial({ 
+      color: '#FF9800', 
+      emissive: '#FF9800', 
       emissiveIntensity: 2.0,
       metalness: 0,
-      roughness: 1,
+      roughness: 1
     });
-
+    
     // Multi-staged flame
     const flameGeo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
     const flame = new THREE.Mesh(flameGeo, flameMat);
     flame.position.y = 0.42;
     torchGroup.add(flame);
-
+    
     const flameTopGeo = new THREE.BoxGeometry(0.08, 0.15, 0.08);
     const flameTop = new THREE.Mesh(flameTopGeo, flameMat);
     flameTop.position.y = 0.5;
     torchGroup.add(flameTop);
-
+    
     // Hot core
     const coreGeo = new THREE.BoxGeometry(0.06, 0.06, 0.06);
-    const coreMat = new THREE.MeshStandardMaterial({
-      color: "#FFFF8D",
-      emissive: "#FFFF8D",
-      emissiveIntensity: 3.0,
+    const coreMat = new THREE.MeshStandardMaterial({ 
+      color: '#FFFF8D', 
+      emissive: '#FFFF8D', 
+      emissiveIntensity: 3.0 
     });
     const core = new THREE.Mesh(coreGeo, coreMat);
     core.position.y = 0.43;
     torchGroup.add(core);
-
+    
     group.add(torchGroup);
   } else if (isChest) {
     // Detailed Chest Model
-    const woodMaterial = new THREE.MeshStandardMaterial({
-      color: primaryColor,
-      roughness: 0.8,
-    });
-    const metalMaterial = new THREE.MeshStandardMaterial({
-      color: "#3d3d3d",
-      metalness: 0.8,
-      roughness: 0.2,
-    });
-    const goldMaterial = new THREE.MeshStandardMaterial({
-      color: "#d4af37",
-      metalness: 0.9,
-      roughness: 0.1,
-    });
+    const woodMaterial = new THREE.MeshStandardMaterial({ color: primaryColor, roughness: 0.8 });
+    const metalMaterial = new THREE.MeshStandardMaterial({ color: '#3d3d3d', metalness: 0.8, roughness: 0.2 });
+    const goldMaterial = new THREE.MeshStandardMaterial({ color: '#d4af37', metalness: 0.9, roughness: 0.1 });
 
     // Main Box (Bottom part)
     const bodyGeo = new THREE.BoxGeometry(0.7, 0.25, 0.6);
@@ -1112,7 +1086,7 @@ export function createItemModel(type: ItemType): THREE.Group {
     // Lid (Upper part)
     const lidGroup = new THREE.Group();
     lidGroup.position.set(0, 0.25, -0.3); // Pivot at the back edge
-
+    
     // Curved Lid - instead of a single box, use multiple segments for a curved look
     // Center segment (tallest)
     const lidCenterGeo = new THREE.BoxGeometry(0.72, 0.18, 0.3);
@@ -1129,10 +1103,10 @@ export function createItemModel(type: ItemType): THREE.Group {
     const lidBack = new THREE.Mesh(lidSlopeGeo, woodMaterial);
     lidBack.position.set(0, 0.05, 0.075);
     lidGroup.add(lidBack);
-
+    
     // Lid bands (metal reinforcement) - adjusted for curved lid
     const mainBandColorMat = metalMaterial;
-
+    
     // Band center
     const bandCenterGeo = new THREE.BoxGeometry(0.06, 0.2, 0.32);
     const lBandCenter = new THREE.Mesh(bandCenterGeo, mainBandColorMat);
@@ -1171,7 +1145,7 @@ export function createItemModel(type: ItemType): THREE.Group {
     // Latch
     const latchGeo = new THREE.BoxGeometry(0.12, 0.14, 0.05);
     const latch = new THREE.Mesh(latchGeo, metalMaterial);
-    latch.position.set(0, 0.2, 0.31);
+    latch.position.set(0, 0.20, 0.31);
     group.add(latch);
 
     const lockGeo = new THREE.BoxGeometry(0.06, 0.08, 0.06);
@@ -1181,7 +1155,7 @@ export function createItemModel(type: ItemType): THREE.Group {
   }
 
   // Common properties
-  group.traverse((child) => {
+  group.traverse(child => {
     if (child instanceof THREE.Mesh) {
       child.castShadow = true;
       child.receiveShadow = true;

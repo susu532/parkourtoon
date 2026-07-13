@@ -11,10 +11,11 @@ class AudioManager {
 
   // Background Music (BGM) management
   private currentMusic: HTMLAudioElement | null = null;
-  private musicVolume: number = 0.4;
 
   private positionalPool: THREE.PositionalAudio[] = [];
   private audioPool: THREE.Audio[] = [];
+
+  private isMutedState: boolean = false;
 
   constructor() {
     this.audioLoader = new THREE.AudioLoader();
@@ -24,10 +25,14 @@ class AudioManager {
 
       // Subscribe to settings for global volume
       settingsManager.subscribe((settings) => {
-        if (this.listener) this.listener.setMasterVolume(settings.volume);
-        if (this.currentMusic)
-          this.currentMusic.volume = settings.volume * this.musicVolume;
+        if (this.listener && !this.getMuted()) {
+          this.listener.setMasterVolume(settings.volume);
+          if (this.currentMusic) {
+            this.currentMusic.volume = settings.volume * settings.musicVolume;
+          }
+        }
       });
+
       // Set initial volume
       const initialVolume = settingsManager.getSettings().volume;
       if (this.listener) this.listener.setMasterVolume(initialVolume);
@@ -57,24 +62,39 @@ class AudioManager {
   }
 
   public setMuted(muted: boolean) {
+    this.isMutedState = muted;
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("audio_mute_change", { detail: muted }),
+      );
+    }
     if (this.listener) {
       if (muted) {
         this.listener.setMasterVolume(0);
         if (this.currentMusic) this.currentMusic.volume = 0;
+        
+        // Ultimate force mute: Suspend the entire AudioContext
+        const ctx = THREE.AudioContext.getContext() as any;
+        if (ctx && ctx.state !== "suspended") {
+          ctx.suspend().catch((e: any) => console.warn(e));
+        }
       } else {
-        const volume = settingsManager.getSettings().volume;
-        this.listener.setMasterVolume(volume);
+        const settings = settingsManager.getSettings();
+        this.listener.setMasterVolume(settings.volume);
         if (this.currentMusic)
-          this.currentMusic.volume = volume * this.musicVolume;
+          this.currentMusic.volume = settings.volume * settings.musicVolume;
+          
+        // Ultimate force unmute: Resume the entire AudioContext
+        const ctx = THREE.AudioContext.getContext() as any;
+        if (ctx && ctx.state === "suspended") {
+          ctx.resume().catch((e: any) => console.warn(e));
+        }
       }
     }
   }
 
   public getMuted(): boolean {
-    if (this.listener) {
-      return this.listener.getMasterVolume() === 0;
-    }
-    return false;
+    return this.isMutedState;
   }
 
   public init(camera: THREE.Camera) {
@@ -238,13 +258,54 @@ class AudioManager {
 
     const audio = new Audio(url);
     audio.loop = true;
-    audio.volume = settingsManager.getSettings().volume * this.musicVolume;
-    audio
-      .play()
-      .catch((e) =>
-        console.warn("Music playback failed, waiting for interaction:", e),
-      );
+    const isMuted = this.getMuted();
+    const settings = settingsManager.getSettings();
+    const volume = isMuted ? 0 : settings.volume * settings.musicVolume;
+    audio.volume = volume;
+    console.log(
+      `[AudioManager] playMusic ${key} - isMuted: ${isMuted}, volume: ${volume}`,
+    );
+
     this.currentMusic = audio;
+
+    let isAttempting = false;
+    const tryPlay = () => {
+      if (this.currentMusic !== audio) {
+        return;
+      }
+      if (isAttempting) return;
+      isAttempting = true;
+
+      audio
+        .play()
+        .then(() => {
+          window.removeEventListener("pointerdown", tryPlay, { capture: true });
+          window.removeEventListener("keydown", tryPlay, { capture: true });
+          window.removeEventListener("click", tryPlay, { capture: true });
+          window.removeEventListener("touchstart", tryPlay, { capture: true });
+        })
+        .catch((e) => {
+          isAttempting = false;
+          window.addEventListener("pointerdown", tryPlay, {
+            once: true,
+            capture: true,
+          });
+          window.addEventListener("keydown", tryPlay, {
+            once: true,
+            capture: true,
+          });
+          window.addEventListener("click", tryPlay, {
+            once: true,
+            capture: true,
+          });
+          window.addEventListener("touchstart", tryPlay, {
+            once: true,
+            capture: true,
+          });
+        });
+    };
+
+    tryPlay();
   }
 
   public stopMusic() {
@@ -281,6 +342,7 @@ class AudioManager {
   }
 
   public startAmbient(name: string) {
+    if (this.isMutedState) return;
     const sound = this.ambientSounds.get(name);
     if (sound && !sound.isPlaying) {
       sound.play();
@@ -307,6 +369,7 @@ class AudioManager {
   }
 
   public play(name: string, volume: number = 0.5, pitch: number = 1.0) {
+    if (this.isMutedState) return;
     this.resume();
     const baseSound = this.sounds.get(name);
     if (!baseSound || !baseSound.buffer) return;
@@ -334,6 +397,7 @@ class AudioManager {
     pitch: number = 1.0,
     distance: number = 20,
   ) {
+    if (this.isMutedState) return;
     this.resume();
     const baseSound = this.sounds.get(name);
     if (!baseSound || !baseSound.buffer) return;
@@ -359,6 +423,7 @@ class AudioManager {
   }
 
   public resume() {
+    if (this.isMutedState) return; // Ultimate force mute: don't wake up if muted
     if (this.listener && this.listener.context) {
       if (this.listener.context.state === "suspended") {
         this.listener.context
@@ -413,6 +478,81 @@ class AudioManager {
       default:
         this.playPositional("step_grass", position, 0.3, pitch);
     }
+  }
+
+  public playThwip() {
+    if (!this.listener) return;
+    if (this.isMutedState) return;
+    const ctx = this.listener.context;
+    if (ctx.state === "suspended") ctx.resume();
+
+    const t = ctx.currentTime;
+    const vol = settingsManager.getSettings().volume;
+
+    const bufferSize = ctx.sampleRate * 0.25;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.setValueAtTime(6000, t);
+    filter.frequency.exponentialRampToValueAtTime(300, t + 0.15);
+    filter.Q.value = 1.0;
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(vol * 0.8, t + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+
+    noise.start(t);
+  }
+
+  public playWhoosh() {
+    if (!this.listener) return;
+    if (this.isMutedState) return;
+    const ctx = this.listener.context;
+    if (ctx.state === "suspended") ctx.resume();
+
+    const t = ctx.currentTime;
+    const vol = settingsManager.getSettings().volume;
+
+    const dur = 1.0;
+    const bufferSize = ctx.sampleRate * dur;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * 0.5;
+    }
+
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(200, t);
+    filter.frequency.exponentialRampToValueAtTime(2000, t + dur * 0.4);
+    filter.frequency.exponentialRampToValueAtTime(200, t + dur);
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(vol * 0.4, t + dur * 0.4);
+    gain.gain.linearRampToValueAtTime(0.01, t + dur);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+
+    noise.start(t);
   }
 }
 

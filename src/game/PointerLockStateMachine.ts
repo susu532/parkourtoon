@@ -1,9 +1,9 @@
 export class PointerLockStateMachine {
   public lastUnlockTime: number = 0;
-
+  
   constructor() {
     this.handleLockChange = this.handleLockChange.bind(this);
-    document.addEventListener("pointerlockchange", this.handleLockChange);
+    document.addEventListener('pointerlockchange', this.handleLockChange);
   }
 
   private handleLockChange() {
@@ -16,16 +16,21 @@ export class PointerLockStateMachine {
   public canLock(): boolean {
     const now = Date.now();
     const hasCooldown = now - this.lastUnlockTime < 1250;
+    
+    const hasActivation = ('userActivation' in navigator) 
+      ? (navigator as any).userActivation.isActive 
+      : true;
 
-    const hasActivation =
-      "userActivation" in navigator
-        ? (navigator as any).userActivation.isActive
-        : true;
+    // If we have explicit user activation (like a click), ignore the cooldown.
+    // The browser allows lock with user activation.
+    if (hasActivation) {
+      return true;
+    }
 
-    return !hasCooldown && hasActivation;
+    return !hasCooldown;
   }
 
   public dispose() {
-    document.removeEventListener("pointerlockchange", this.handleLockChange);
+    document.removeEventListener('pointerlockchange', this.handleLockChange);
   }
 }

@@ -16,6 +16,7 @@ import {
 } from "./TextureAtlas";
 import { Inventory, ItemType } from "./Inventory";
 import { ITEM_NAMES } from "./Constants";
+import { getSummerLabPhase } from "./PhaseHelper";
 import { EntityManager } from "./EntityManager";
 import { generateSkin, applySkinUVs } from "./SkinManager";
 import { networkManager } from "./NetworkManager";
@@ -96,6 +97,7 @@ export class Player {
   baseFOV = 75;
   targetFOV = 75;
   lastAttackTime = 0;
+  grapplePoint: THREE.Vector3 | null = null;
 
   speed = 5.5;
   sprintSpeed = 8.5;
@@ -224,22 +226,27 @@ export class Player {
     this.world = world;
     this.entityManager = entityManager;
 
-    // Add random offsets so players don't all spawn exactly inside each other
-    const rx = (Math.random() - 0.5) * 4;
-    const rz = (Math.random() - 0.5) * 4;
-
-    this.worldPosition = new THREE.Vector3(rx, 10, rz);
-
-    // Initial position on the bridge
-    this.camera.position.set(rx, 6, rz);
-
-    this.renderer = new PlayerRenderer(this);
-    this.world.scene.add(this.renderer.modelGroup);
-
     // Initialize camera rotation state
     const urlParams = new URLSearchParams(window.location.search);
     const serverName = urlParams.get("server") || "dungeondelver";
     const isHub = serverName.startsWith("hub");
+
+    // Add random offsets so players don't all spawn exactly inside each other
+    const rx = (Math.random() - 0.5) * 4;
+    const rz = (Math.random() - 0.5) * 4;
+
+    let startZ = rz;
+    if (serverName.startsWith("summerlab")) {
+      startZ = 25 + rz;
+    }
+
+    this.worldPosition = new THREE.Vector3(rx, 10, startZ);
+
+    // Initial position on the bridge
+    this.camera.position.set(rx, 6, startZ);
+
+    this.renderer = new PlayerRenderer(this);
+    this.world.scene.add(this.renderer.modelGroup);
 
     if (isHub) {
       this.camera.quaternion.setFromAxisAngle(
@@ -450,6 +457,7 @@ export class Player {
           itemsAdded = true;
         }
       } else if (modeWithoutNum === "summerlab") {
+        const summerLabPhase = getSummerLabPhase();
         if (
           !wasDead &&
           getInventoryCount(ItemType.FLUID_CHOCOLATE_HOSE) === 0 &&
@@ -594,29 +602,32 @@ export class Player {
     }
 
     skyBridgeManager.stats.health -= actualDamage;
+    if (skyBridgeManager.stats.health < 0) skyBridgeManager.stats.health = 0;
+    this.health = skyBridgeManager.stats.health;
+    
     if (actualDamage > 0) {
       skyBridgeManager.lastDamageTime = performance.now();
     }
-    if (skyBridgeManager.stats.health < 0) skyBridgeManager.stats.health = 0;
-    this.health = skyBridgeManager.stats.health;
+    
     audioManager.play("hurt", 0.6, 0.9 + Math.random() * 0.2);
 
     if (this.health <= 0) {
       this.die(isNetworkHit, reason);
     }
 
-    if (knockbackDir) {
+     if (knockbackDir) {
       // Normalize and apply a consistent, powerful knockback
-      const force = Math.max(4.0, knockbackDir.length() * 0.5);
+      const force = Math.max(8.0, knockbackDir.length());
       const dir = knockbackDir.clone().normalize();
 
       this.knockbackVelocity.x = dir.x * force;
       this.knockbackVelocity.z = dir.z * force;
 
       // Add vertical lift to make knockback feel more impactful (works in mid-air too)
-      this.velocity.y = (this.velocity.y || 0) + 1.1;
+      this.velocity.y = (this.velocity.y || 0) + 2.2;
     }
   }
+
 
   private die(isNetworkHit: boolean = false, reason: string = "died") {
     if (this.isDead || this.isSpectator || this.world.isHub) return;
@@ -638,6 +649,9 @@ export class Player {
     // Prevent breaking the chest
     if (isSkyCastles && pos.x === 5 && pos.y === 66 && pos.z === 190) return;
 
+    // Disable block breaking at spawn (5 block radius)
+    if (Math.abs(pos.x) <= 5 && Math.abs(pos.z) <= 5) return;
+
     const success = this.world.setBlock(
       pos.x,
       pos.y,
@@ -647,6 +661,20 @@ export class Player {
       this.isFlying,
     );
     if (success) {
+      if ((window as any).game?.chocolateFluidSystem) {
+        const sys = (window as any).game.chocolateFluidSystem;
+        const bx = Math.floor(pos.x);
+        const by = Math.floor(pos.y);
+        const bz = Math.floor(pos.z);
+        for (let sx = bx * 5 - 1; sx <= bx * 5 + 5; sx++) {
+          for (let sy = by * 5 - 1; sy <= by * 5 + 5; sy++) {
+            for (let sz = bz * 5 - 1; sz <= bz * 5 + 5; sz++) {
+              sys.removeSplat(`${sx},${sy},${sz}`);
+            }
+          }
+        }
+      }
+
       audioManager.playPositional(
         "pop",
         pos.clone().addScalar(0.5),
@@ -823,5 +851,52 @@ export class Player {
 
   update(delta: number) {
     updatePlayer(this, delta);
+    
+    if (this.world.isSummerLab) {
+      const summerLabPhase = getSummerLabPhase();
+      let changedInventory = false;
+
+      let hasTorch = false;
+      for (const slot of this.inventory.slots) {
+        if (slot && slot.type === ItemType.TORCH) hasTorch = true;
+      }
+
+      if (summerLabPhase === 3) {
+        // If they enter the backrooms and have no torch anywhere, give them one in off-hand
+        if (!hasTorch) {
+          if (!this.inventory.slots[Inventory.OFF_HAND_SLOT]) {
+             this.inventory.slots[Inventory.OFF_HAND_SLOT] = { type: ItemType.TORCH, count: 1 };
+             changedInventory = true;
+          } else {
+             // Try to find an empty slot or just force it somewhere
+             let placed = false;
+             for (let i = 0; i < this.inventory.slots.length; i++) {
+                 if (!this.inventory.slots[i]) {
+                     this.inventory.slots[i] = { type: ItemType.TORCH, count: 1 };
+                     placed = true;
+                     changedInventory = true;
+                     break;
+                 }
+             }
+             if (!placed) {
+                 this.inventory.slots[Inventory.OFF_HAND_SLOT] = { type: ItemType.TORCH, count: 1 };
+                 changedInventory = true;
+             }
+          }
+        }
+      } else {
+        // Remove ALL torches when NOT in Backrooms, including OFF_HAND
+        for (let i = 0; i < this.inventory.slots.length; i++) {
+          if (this.inventory.slots[i]?.type === ItemType.TORCH) {
+             this.inventory.slots[i] = null;
+             changedInventory = true;
+          }
+        }
+      }
+
+      if (changedInventory) {
+        useGameStore.getState().incrementInventoryVersion();
+      }
+    }
   }
 }

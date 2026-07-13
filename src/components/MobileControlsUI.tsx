@@ -76,9 +76,12 @@ export const MobileControlsUI: React.FC<{ game?: any }> = ({ game }) => {
   const isTyping = useUI((state) => state.isTyping);
   const setTyping = useUI((state) => state.setTyping);
   const setLocked = useUI((state) => state.setLocked);
+  const isLoadoutOpen = useUI((state) => state.isLoadoutOpen);
+  const isChestOpen = useUI((state) => state.isChestOpen);
 
   const showLeaderboard = useGameStore((state) => state.showLeaderboard);
   const setShowLeaderboard = useGameStore((state) => state.setShowLeaderboard);
+  const isMapLoading = useGameStore((state) => state.isMapLoading);
 
   const hotbarIndex = useGameStore((state) => state.hotbarIndex);
   const inventoryVersion = useGameStore((state) => state.inventoryVersion);
@@ -92,11 +95,14 @@ export const MobileControlsUI: React.FC<{ game?: any }> = ({ game }) => {
   const isAnyMenuOpen =
     isInventoryOpen ||
     isShopOpen ||
+    isChestOpen ||
     isSettingsOpen ||
     isPauseMenuOpen ||
     isServerJoinOpen ||
     isLaunchMenuOpen ||
     isTyping ||
+    isLoadoutOpen ||
+    isMapLoading ||
     showLeaderboard;
 
   useEffect(() => {
@@ -117,6 +123,8 @@ export const MobileControlsUI: React.FC<{ game?: any }> = ({ game }) => {
   const lookHasMoved = useRef<boolean>(false);
 
   const lastZoomLookPos = useRef<{ x: number; y: number } | null>(null);
+  
+  const lastJoystickTapTime = useRef<number>(0);
 
   const maxRadius = useRef(50);
 
@@ -136,6 +144,7 @@ export const MobileControlsUI: React.FC<{ game?: any }> = ({ game }) => {
   const isButtonAttacking = useRef(false);
 
   const [joystick, setJoystick] = useState({ x: 0, y: 0 });
+  const [isCrouched, setIsCrouched] = useState(false);
   const joystickRef = useRef<HTMLDivElement>(null);
   const joystickPointerId = useRef<number | null>(null);
   const joystickOriginRef = useRef<{ x: number; y: number } | null>(null);
@@ -176,20 +185,30 @@ export const MobileControlsUI: React.FC<{ game?: any }> = ({ game }) => {
 
         const target = e.target as HTMLElement;
         const isButton = target && target.closest(".mobile-button");
+        const isHotbar = target && target.closest(".hotbar-btn");
         const isPassThrough = target && target.closest(".pass-through-button");
         const isNoPrevent = target && target.closest(".no-prevent");
 
         if (isNoPrevent) continue;
+        if (isHotbar) continue;
 
         const isBottomLeft =
           touch.clientX < window.innerWidth * 0.5 &&
           touch.clientY > window.innerHeight * 0.2;
 
-        if (isBottomLeft && joystickTouchId.current === null && !isButton) {
-          joystickTouchId.current = touch.identifier;
-          joystickOriginRef.current = { x: touch.clientX, y: touch.clientY };
-          setJoystickOrigin({ x: touch.clientX, y: touch.clientY });
-          continue; // Dedicated joystick touch
+        if (isBottomLeft && !isButton) {
+          if (joystickTouchId.current === null) {
+            joystickTouchId.current = touch.identifier;
+            joystickOriginRef.current = { x: touch.clientX, y: touch.clientY };
+            setJoystickOrigin({ x: touch.clientX, y: touch.clientY });
+
+            const now = Date.now();
+            if (now - lastJoystickTapTime.current < 300) {
+                window.mobileInputs.isSprinting = true;
+            }
+            lastJoystickTapTime.current = now;
+          }
+          continue; // Prevent joystick area touches from affecting camera if there's already a joystick active
         }
 
         if (isButton && isPassThrough) {
@@ -218,13 +237,20 @@ export const MobileControlsUI: React.FC<{ game?: any }> = ({ game }) => {
         }
 
         if (joystickTouchId.current !== touch.identifier) {
+          const checkType = game?.player?.inventory?.slots[hotbarIndex]?.type;
+          const isHoldingHose = checkType === 521 || checkType === 522; // 521=FLUID_CHOCOLATE_HOSE, 522=WASHING_HOSE
+
           const holdTimeout = setTimeout(() => {
             const tap = activeTaps.current.get(touch.identifier);
-            if (tap && !tap.isSwipe) {
+            if (tap && !tap.isSwipe && !isHoldingHose) {
               window.mobileInputs.isAttacking = true;
               tap.isHolding = true;
             }
           }, 300);
+
+          if (isHoldingHose) {
+             window.mobileInputs.isAttacking = true;
+          }
 
           activeTaps.current.set(touch.identifier, {
             x: touch.clientX,
@@ -232,7 +258,7 @@ export const MobileControlsUI: React.FC<{ game?: any }> = ({ game }) => {
             time: Date.now(),
             isSwipe: false,
             holdTimeout,
-            isHolding: false,
+            isHolding: isHoldingHose,
           });
         }
       }
@@ -257,7 +283,7 @@ export const MobileControlsUI: React.FC<{ game?: any }> = ({ game }) => {
             let normalizedX = dx / maxRadius.current;
             let normalizedY = dy / maxRadius.current;
 
-            let isSprinting = false;
+            let isSprinting = window.mobileInputs.isSprinting;
             if (distance > maxRadius.current) {
               normalizedX = dx / distance;
               normalizedY = dy / distance;
@@ -284,7 +310,14 @@ export const MobileControlsUI: React.FC<{ game?: any }> = ({ game }) => {
           const dy = touch.clientY - tap.y;
           if (dx * dx + dy * dy > 100) {
             tap.isSwipe = true;
-            if (!tap.isHolding) {
+            if (tap.isHolding) {
+              tap.isHolding = false;
+              let anyHolding = false;
+              activeTaps.current.forEach((t) => {
+                if (t.isHolding && t !== tap) anyHolding = true;
+              });
+              window.mobileInputs.isAttacking = isButtonAttacking.current || anyHolding;
+            } else {
               clearTimeout(tap.holdTimeout);
             }
           }
@@ -404,60 +437,16 @@ export const MobileControlsUI: React.FC<{ game?: any }> = ({ game }) => {
   if (isAnyMenuOpen) return null;
 
   return (
-    <div className="absolute inset-0 pointer-events-none z-40 overflow-hidden touch-none">
+    <div className="absolute inset-0 pointer-events-none z-[70] overflow-hidden touch-none">
       {/* Top HUD Buttons */}
       <div
-        className="absolute flex gap-2 pointer-events-auto transform origin-top-right scale-[0.8] landscape:scale-[1.0] md:landscape:scale-[1.1]"
+        className="absolute flex gap-2 pointer-events-auto transform origin-top-right scale-[0.8] landscape:scale-[0.6] sm:landscape:scale-[0.7] md:landscape:scale-[1.0] lg:landscape:scale-[1.1] [@media(orientation:landscape)_and_(max-height:500px)]:scale-[0.55]"
         style={{
           top: "calc(0.5rem + env(safe-area-inset-top))",
           right: "calc(0.5rem + env(safe-area-inset-right))",
         }}
+        onPointerDown={(e) => e.stopPropagation()}
       >
-        <button
-          className="w-12 h-12 rounded-full bg-black/40 border border-white/20 flex items-center justify-center text-white active:bg-white/40 touch-none mobile-button"
-          onPointerDown={(e) => {
-            e.preventDefault();
-            window.mobileInputs.isZooming = true;
-            lastZoomLookPos.current = { x: e.clientX, y: e.clientY };
-            (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
-          }}
-          onPointerMove={(e) => {
-            if (window.mobileInputs.isZooming && lastZoomLookPos.current) {
-              const dx = e.clientX - lastZoomLookPos.current.x;
-              const dy = e.clientY - lastZoomLookPos.current.y;
-              const maxDist = 40;
-              window.mobileInputs.zoomJoystickX = Math.max(
-                -1,
-                Math.min(1, dx / maxDist),
-              );
-              window.mobileInputs.zoomJoystickY = Math.max(
-                -1,
-                Math.min(1, dy / maxDist),
-              );
-            }
-          }}
-          onPointerUp={(e) => {
-            e.preventDefault();
-            window.mobileInputs.isZooming = false;
-            window.mobileInputs.zoomJoystickX = 0;
-            window.mobileInputs.zoomJoystickY = 0;
-            lastZoomLookPos.current = null;
-            (e.currentTarget as HTMLElement).releasePointerCapture?.(
-              e.pointerId,
-            );
-          }}
-          onPointerCancel={(e) => {
-            window.mobileInputs.isZooming = false;
-            window.mobileInputs.zoomJoystickX = 0;
-            window.mobileInputs.zoomJoystickY = 0;
-            lastZoomLookPos.current = null;
-            (e.currentTarget as HTMLElement).releasePointerCapture?.(
-              e.pointerId,
-            );
-          }}
-        >
-          <ScanEye size={20} className="text-white drop-shadow-md" />
-        </button>
         {hasHose && (
           <button
             className={`hidden landscape:flex w-12 h-12 rounded-full border-[2px] items-center justify-center text-white mobile-button pointer-events-auto shadow-md transition-colors ${isColorPickerOpen ? "shadow-[0_0_15px_rgba(255,255,255,0.5)]" : "bg-black/40 active:bg-white/40"}`}
@@ -564,25 +553,25 @@ export const MobileControlsUI: React.FC<{ game?: any }> = ({ game }) => {
 
       {hasHose && isColorPickerOpen && (
         <div
-          className="hidden landscape:flex absolute pointer-events-auto z-50 animate-in fade-in slide-in-from-top-4 duration-200 bg-black/70 backdrop-blur-xl rounded-3xl p-5 border border-white/20 shadow-2xl flex-row items-center gap-6 no-prevent"
+          className="hidden landscape:flex absolute pointer-events-auto z-50 animate-in fade-in slide-in-from-top-4 duration-200 bg-black/70 backdrop-blur-xl rounded-2xl md:rounded-3xl p-3 md:p-5 border border-white/20 shadow-2xl flex-row items-center gap-3 md:gap-6 no-prevent origin-top-right transform scale-[0.7] sm:scale-[0.8] md:scale-100 [@media(orientation:landscape)_and_(max-height:500px)]:scale-[0.65]"
           style={{
-            top: "calc(4rem + env(safe-area-inset-top))",
+            top: "calc(3.5rem + env(safe-area-inset-top))",
             right: "calc(0.5rem + env(safe-area-inset-right))",
           }}
           onTouchMove={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
         >
           <div className="flex flex-col items-center">
-            <div className="mb-3 text-xs font-bold text-white/50 uppercase tracking-widest">
+            <div className="mb-2 md:mb-3 text-[10px] md:text-xs font-bold text-white/50 uppercase tracking-widest">
               Fluid Color
             </div>
             <HexColorPicker
               color={fluidColor}
               onChange={setFluidColor}
-              style={{ width: "160px", height: "160px" }}
+              className="w-[120px] h-[120px] md:w-[160px] md:h-[160px]"
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2 md:gap-3">
             {[
               "#3d1c04", // Chocolate
               "#1e90ff", // Water
@@ -595,7 +584,7 @@ export const MobileControlsUI: React.FC<{ game?: any }> = ({ game }) => {
             ].map((preset) => (
               <button
                 key={preset}
-                className="w-12 h-12 rounded-full border-[3px] transition-transform shadow-lg"
+                className="w-10 h-10 md:w-12 md:h-12 rounded-full border-[2px] md:border-[3px] transition-transform shadow-lg"
                 style={{
                   backgroundColor: preset,
                   borderColor:
@@ -622,24 +611,24 @@ export const MobileControlsUI: React.FC<{ game?: any }> = ({ game }) => {
       <div
         ref={joystickRef}
         data-joystick-area="true"
-        className="absolute top-0 bottom-16 landscape:bottom-24 z-50 pointer-events-none touch-none"
+        className="absolute top-20 bottom-16 landscape:bottom-24 z-50 pointer-events-none touch-none"
         style={{
           left: "calc(0px + env(safe-area-inset-left))",
           width: "calc(50% - env(safe-area-inset-left))",
         }}
       >
         {!joystickOrigin && (
-          <div className="absolute w-36 h-36 sm:w-40 sm:h-40 md:w-48 md:h-48 landscape:w-[15vw] landscape:h-[15vw] landscape:min-w-[100px] landscape:min-h-[100px] max-w-[200px] max-h-[200px] bg-white/5 border-2 border-white/10 rounded-full flex items-center justify-center pointer-events-none -translate-x-1/2 -translate-y-1/2 left-[30%] top-[60%] landscape:left-[22%] landscape:top-[65%]">
-            <div className="w-[40%] h-[40%] border-2 border-white/20 bg-white/10 rounded-full shadow-lg pointer-events-none" />
+          <div className="absolute w-36 h-36 sm:w-40 sm:h-40 md:w-48 md:h-48 landscape:w-[15vw] landscape:h-[15vw] landscape:min-w-[100px] landscape:min-h-[100px] [@media(orientation:landscape)_and_(max-height:500px)]:min-w-[80px] [@media(orientation:landscape)_and_(max-height:500px)]:min-h-[80px] [@media(orientation:landscape)_and_(max-height:500px)]:w-[12vw] [@media(orientation:landscape)_and_(max-height:500px)]:h-[12vw] max-w-[200px] max-h-[200px] bg-white/10 border-2 border-white/30 rounded-full flex items-center justify-center pointer-events-none -translate-x-1/2 -translate-y-1/2 left-[30%] top-[60%] landscape:left-[22%] landscape:top-[65%]">
+            <div className="w-[40%] h-[40%] border-2 border-white/40 bg-white/30 rounded-full shadow-lg pointer-events-none" />
           </div>
         )}
         {joystickOrigin && (
           <div
-            className="absolute w-36 h-36 sm:w-40 sm:h-40 md:w-48 md:h-48 landscape:w-[15vw] landscape:h-[15vw] landscape:min-w-[100px] landscape:min-h-[100px] max-w-[200px] max-h-[200px] bg-black/20 border border-white/20 rounded-full flex items-center justify-center p-2 pointer-events-none -translate-x-1/2 -translate-y-1/2"
+            className="absolute w-36 h-36 sm:w-40 sm:h-40 md:w-48 md:h-48 landscape:w-[15vw] landscape:h-[15vw] landscape:min-w-[100px] landscape:min-h-[100px] [@media(orientation:landscape)_and_(max-height:500px)]:min-w-[80px] [@media(orientation:landscape)_and_(max-height:500px)]:min-h-[80px] [@media(orientation:landscape)_and_(max-height:500px)]:w-[12vw] [@media(orientation:landscape)_and_(max-height:500px)]:h-[12vw] max-w-[200px] max-h-[200px] bg-black/40 border-2 border-white/40 rounded-full flex items-center justify-center p-2 pointer-events-none -translate-x-1/2 -translate-y-1/2"
             style={{ left: joystickOrigin.x, top: joystickOrigin.y }}
           >
             <div
-              className={`w-[45%] h-[45%] border-2 rounded-full shadow-lg pointer-events-none flex items-center justify-center transition-colors ${window.mobileInputs.isSprinting ? "bg-white/60 border-white/80" : "bg-white/40 border-white/60"}`}
+              className={`w-[45%] h-[45%] border-2 rounded-full shadow-lg pointer-events-none flex items-center justify-center transition-colors ${window.mobileInputs.isSprinting ? "bg-white/80 border-white" : "bg-white/60 border-white/80"}`}
               style={{
                 transform: `translate(${joystick.x * 125}%, ${joystick.y * 125}%)`,
                 transition:
@@ -666,11 +655,12 @@ export const MobileControlsUI: React.FC<{ game?: any }> = ({ game }) => {
 
       {/* Action Buttons (Right side - Diamond layout for thumbs) */}
       <div
-        className="absolute pointer-events-none w-64 h-64 transform origin-bottom-right scale-[1.0] sm:scale-[1.2] landscape:scale-[0.9] md:landscape:scale-[1.0] lg:landscape:scale-[1.1]"
+        className="absolute pointer-events-none w-64 h-64 transform origin-bottom-right scale-[1.0] sm:scale-[1.2] landscape:scale-[0.9] md:landscape:scale-[1.0] lg:landscape:scale-[1.1] [@media(orientation:landscape)_and_(max-height:500px)]:scale-[0.65]"
         style={{
           bottom: "calc(3.5rem + env(safe-area-inset-bottom))",
           right: "calc(0.5rem + env(safe-area-inset-right))",
         }}
+        onPointerDown={(e) => e.stopPropagation()}
       >
         {/* Jump Button (Top) */}
         <button
@@ -736,18 +726,30 @@ export const MobileControlsUI: React.FC<{ game?: any }> = ({ game }) => {
 
         {/* Crouch Button (Bottom) */}
         <button
-          className="absolute bottom-0 landscape:bottom-6 left-1/2 -translate-x-1/2 mobile-button pass-through-button w-16 h-16 rounded-full bg-white/20 border-[3px] border-white/40 flex items-center justify-center active:bg-white/40 opacity-80 pointer-events-auto shadow-md"
+          className={`absolute bottom-0 landscape:bottom-6 left-1/2 -translate-x-1/2 mobile-button pass-through-button w-16 h-16 rounded-full border-[3px] border-white/40 flex items-center justify-center opacity-80 pointer-events-auto shadow-md ${isCrouched ? 'bg-white/50' : 'bg-white/20'}`}
           onTouchStart={(e) => {
-            window.mobileInputs.isCrouching = true;
-          }}
-          onTouchEnd={(e) => {
-            window.mobileInputs.isCrouching = false;
-          }}
-          onTouchCancel={(e) => {
-            window.mobileInputs.isCrouching = false;
+            const next = !isCrouched;
+            setIsCrouched(next);
+            window.mobileInputs.isCrouching = next;
           }}
         >
           <ArrowDown size={26} className="text-white drop-shadow-md" />
+        </button>
+
+        {/* Zoom Button (Top Left of the Diamond) */}
+        <button
+          className="absolute top-0 left-0 -translate-x-4 -translate-y-4 landscape:top-6 landscape:-translate-x-6 mobile-button w-14 h-14 rounded-full bg-white/20 border-[3px] border-white/40 flex items-center justify-center active:bg-white/40 opacity-80 pointer-events-auto shadow-md"
+          onTouchStart={(e) => {
+            window.mobileInputs.isZooming = true;
+          }}
+          onTouchEnd={(e) => {
+            window.mobileInputs.isZooming = false;
+          }}
+          onTouchCancel={(e) => {
+            window.mobileInputs.isZooming = false;
+          }}
+        >
+          <ScanEye size={24} className="text-white drop-shadow-md" />
         </button>
       </div>
     </div>

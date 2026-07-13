@@ -1,9 +1,10 @@
-import React from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { useGameStore } from "../store/gameStore";
+
+import React from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { useGameStore } from '../store/gameStore';
 
 export const GameMessages: React.FC = () => {
-  const messages = useGameStore((state) => state.messages);
+  const messages = useGameStore(state => state.messages);
 
   return (
     <div className="fixed bottom-1/4 left-1/2 -translate-x-1/2 pointer-events-none z-[500] flex flex-col items-center gap-2">

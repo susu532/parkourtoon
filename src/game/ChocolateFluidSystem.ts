@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { Game } from './Game';
 import { networkManager } from './NetworkManager';
+import { ItemType } from './Inventory';
+import { useGameStore } from '../store/gameStore';
+import { isSummerLabPlatform } from './generation/SummerLabGenerator';
 
 function seededRandom(x: number, y: number, z: number, seed: number) {
     const qx = Math.round(x * 10);
@@ -10,6 +13,13 @@ function seededRandom(x: number, y: number, z: number, seed: number) {
     const sin = Math.sin(dot) * 43758.5453;
     return sin - Math.floor(sin);
 }
+
+// Temp vectors for fluid calculation to prevent garbage collection sweeps
+const _tempNextPos = new THREE.Vector3();
+const _tempRayDir = new THREE.Vector3();
+const _tempVel = new THREE.Vector3();
+const _tempHitNorm = new THREE.Vector3();
+const _upVec = new THREE.Vector3(0, 1, 0);
 
 export class ChocolateFluidSystem {
 
@@ -24,6 +34,7 @@ export class ChocolateFluidSystem {
   projectileAges: number[] = [];
   projectileInitialScales: number[] = [];
   projectileColors: THREE.Color[] = [];
+  projectileIsLocal: boolean[] = [];
   projectileWriteIdx = 0;
   
   // Splats (painted decays)
@@ -43,7 +54,7 @@ export class ChocolateFluidSystem {
   minProjIdx = 0; // Will be set to maxProjectiles in constructor
   maxProjIdx = -1;
 
-  emitRequests: { origin: THREE.Vector3, dir: THREE.Vector3, isSpray: boolean, color: THREE.Color, velocity: THREE.Vector3, lastOrigin?: THREE.Vector3 }[] = [];
+  emitRequests: { origin: THREE.Vector3, dir: THREE.Vector3, isSpray: boolean, color: THREE.Color, velocity: THREE.Vector3, lastOrigin?: THREE.Vector3, isLocal?: boolean }[] = [];
 
   splatGrid = new Map<string, { idx: number, timestamp: number, colorHex: number }>();
   splatKeys: string[] = [];
@@ -65,8 +76,8 @@ export class ChocolateFluidSystem {
   constructor(game: Game) {
     this.game = game;
     const isMobile = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
-    this.maxProjectiles = isMobile ? 1500 : 3000;
-    this.maxSplats = isMobile ? 8000 : 100000;
+ this.maxProjectiles = isMobile ? 1500 : 3000;
+this.maxSplats = isMobile ? 30000 : 200000;
     
     this.minProjIdx = this.maxProjectiles;
     this.minSplatIdx = this.maxSplats;
@@ -129,6 +140,7 @@ export class ChocolateFluidSystem {
       this.projectileAges.push(0);
       this.projectileInitialScales.push(1.35);
       this.projectileColors.push(defaultColor.clone());
+      this.projectileIsLocal.push(false);
     }
     this.projectileMesh.instanceMatrix.needsUpdate = true;
     this.projectileMesh.instanceColor.needsUpdate = true;
@@ -273,6 +285,7 @@ export class ChocolateFluidSystem {
         this.projectileInitialScales[idx] = spawnThickness; // Store thickness at spawn time
         this.projectileMesh.setColorAt(idx, req.color);
         this.projectileColors[idx].copy(req.color);
+        this.projectileIsLocal[idx] = req.isLocal || false;
         
         const alpha = req.color.getHex() === 0x3889f0 ? 0.25 : 1.0;
         this.projectileMesh.geometry.attributes.instanceAlpha.setX(idx, alpha);
@@ -332,29 +345,46 @@ export class ChocolateFluidSystem {
         
         if (!hideNow) {
             // Next position
-            const nextPos = pos.clone().add(vel.clone().multiplyScalar(delta));
+            _tempVel.copy(vel).multiplyScalar(delta);
+            _tempNextPos.copy(pos).add(_tempVel);
             
             // Raycast voxel world (DDA)
-            const rayDir = nextPos.clone().sub(pos);
-            const dist = rayDir.length();
+            _tempRayDir.copy(_tempNextPos).sub(pos);
+            const dist = _tempRayDir.length();
             
             if (dist > 0.0001) {
-                rayDir.normalize();
+                _tempRayDir.normalize();
                 
-                const hitInfo = this.game.world.raycast(pos, rayDir, dist);
+                const hitInfo = this.game.world.raycast(pos, _tempRayDir, dist);
                 if (hitInfo.hit && hitInfo.hitPoint) {
                     // It hit a block!
                     this.projectileLifetimes[i] = 0;
                     
                     // Spawn a Splat!
-                    const hitNorm = hitInfo.prevPos.clone().sub(hitInfo.blockPos).normalize();
+                    _tempHitNorm.copy(hitInfo.prevPos).sub(hitInfo.blockPos).normalize();
                     // Prevent zero normal
-                    if (hitNorm.lengthSq() < 0.1) hitNorm.set(0, 1, 0);
+                    if (_tempHitNorm.lengthSq() < 0.1) _tempHitNorm.set(0, 1, 0);
 
-                    this.spawnSplat(hitInfo.hitPoint, hitNorm, this.projectileColors[i]);
+                    const hitBlock = hitInfo.blockType;
+                    let canSplat = hitBlock !== undefined && 
+                                     hitBlock !== ItemType.TALL_GRASS && 
+                                     hitBlock !== ItemType.WHEAT && 
+                                     hitBlock !== ItemType.FLOWER_RED && 
+                                     hitBlock !== ItemType.FLOWER_YELLOW &&
+                                     hitBlock !== ItemType.WATER;
+
+                    if (canSplat && useGameStore.getState().currentMode === "summerlab") {
+                        if (isSummerLabPlatform(hitInfo.blockPos.x, hitInfo.blockPos.y, hitInfo.blockPos.z)) {
+                            canSplat = false;
+                        }
+                    }
+
+                    if (canSplat && this.projectileIsLocal[i]) {
+                        this.spawnSplat(hitInfo.hitPoint, _tempHitNorm, this.projectileColors[i], false);
+                    }
                     
                     hideNow = true;
-                } else if (nextPos.y <= -50) { 
+                } else if (_tempNextPos.y <= -50) { 
                     this.projectileLifetimes[i] = 0;
                     hideNow = true;
                 }
@@ -366,14 +396,15 @@ export class ChocolateFluidSystem {
                 vel.multiplyScalar(Math.max(0, 1.0 - 0.45 * delta)); // slightly less drag
 
                 // Apply new pos
-                pos.copy(nextPos);
+                pos.copy(_tempNextPos);
                 
                 // Update mesh
                 this.splatDummy.position.copy(pos);
                 // Stretchy projectiles using lookAt to velocity
                 const speed = vel.length();
                 if (speed > 0.1) {
-                    this.splatDummy.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), vel.clone().normalize());
+                    _tempVel.copy(vel).normalize();
+                    this.splatDummy.quaternion.setFromUnitVectors(_upVec, _tempVel);
                 }
                 
                 // Rope-like thickness: starts at individual initial scale, gets slightly thicker with age
@@ -437,7 +468,7 @@ export class ChocolateFluidSystem {
     }
     
     if (this.pendingSplats.length > 0) {
-        if (!this.lastSplatEmitTime || Date.now() - this.lastSplatEmitTime > 100) {
+        if (!this.lastSplatEmitTime || Date.now() - this.lastSplatEmitTime > 33) {
            networkManager.socket.emit("splats", this.pendingSplats);
            this.pendingSplats = [];
            this.lastSplatEmitTime = Date.now();
@@ -445,7 +476,7 @@ export class ChocolateFluidSystem {
     }
     
     if (this.pendingCleanSplats.length > 0) {
-        if (!this.lastCleanEmitTime || Date.now() - this.lastCleanEmitTime > 100) {
+        if (!this.lastCleanEmitTime || Date.now() - this.lastCleanEmitTime > 33) {
            networkManager.socket.emit("cleanSplats", this.pendingCleanSplats);
            this.pendingCleanSplats = [];
            this.lastCleanEmitTime = Date.now();
@@ -563,6 +594,25 @@ export class ChocolateFluidSystem {
     }
   }
 
+  clearAllSplats() {
+    this.splatGrid.clear();
+    this.splatKeys.fill('');
+    this.splatCount = 0;
+    this.minSplatIdx = 0;
+    this.maxSplatIdx = this.maxSplats - 1;
+    this.splatDummy.scale.set(0, 0, 0);
+    this.splatDummy.updateMatrix();
+    if (this.splatMesh && this.squareSplatMesh) {
+       for (let i = 0; i < this.maxSplats; i++) {
+           this.splatMesh.setMatrixAt(i, this.splatDummy.matrix);
+           this.squareSplatMesh.setMatrixAt(i, this.splatDummy.matrix);
+       }
+    }
+    this.splatUpdated = true;
+    this.pendingSplats = [];
+    this.pendingCleanSplats = [];
+  }
+
   removeSplat(key: string, fromNetwork = false) {
      const target = this.splatGrid.get(key);
      if (target) {
@@ -581,7 +631,7 @@ export class ChocolateFluidSystem {
      }
   }
 
-  emit(origin: THREE.Vector3, direction: THREE.Vector3, isSpray: boolean = false, color?: THREE.Color, velocity?: THREE.Vector3) {
+  emit(origin: THREE.Vector3, direction: THREE.Vector3, isSpray: boolean = false, color?: THREE.Color, velocity?: THREE.Vector3, isLocal: boolean = false) {
     // Find if this specific emitter (like local player) is already emitting so we can interpolate origin
     // For simplicity, we just use a basic distance check to link origins, or let callers pass their lastOrigin.
     // To make it fully robust for multiple emitters, we should let them pass their ID, but this is a lightweight approach.
@@ -591,6 +641,7 @@ export class ChocolateFluidSystem {
         isSpray: isSpray,
         color: color ? color.clone() : new THREE.Color('#3d1c04'),
         velocity: velocity ? velocity.clone() : new THREE.Vector3(),
+        isLocal: isLocal
     });
   }
 

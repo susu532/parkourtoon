@@ -4,7 +4,6 @@ import { skyBridgeManager } from "./SkyBridgeManager";
 import { useGameStore } from "../store/gameStore";
 import { useUIStore } from "../store/uiStore";
 import { settingsManager } from "./Settings";
-import { getRandomCutePlayerName } from "./CuteNames";
 import { audioManager } from "./AudioManager";
 import { isAnyTorch, isTransparent, BLOCK } from "./TextureAtlas";
 import { IGameStateData, IPlayerUpdate, ISpawnParams } from "../types/shared";
@@ -20,9 +19,41 @@ export class ClientNetworkSync {
 
   private registerHandlers() {
     // Network setup
+    networkManager.onForceReloadMap = (data) => {
+      if (data && data.phase !== undefined) {
+          (window as any).__FORCE_SUMMER_LAB_PHASE = data.phase;
+      }
+      networkManager.blockChanges = {};
+      networkManager.clearChunkQueue();
+      useGameStore.getState().setLoadingProgress(0, "Rotating Maps...");
+      useGameStore.getState().setIsMapLoading(true);
+      this.game.player.hasReceivedInitialRespawn = false;
+      this.game.world.reset(this.game.currentMode);
+      if (this.game.chocolateFluidSystem) {
+        this.game.chocolateFluidSystem.clearAllSplats();
+      }
+
+      const modeWithoutNum = this.game.currentMode.split("_")[0];
+      if (modeWithoutNum === "skycastles") {
+        this.game.player.setupSkyCastlesInventory();
+      } else if (modeWithoutNum === "dungeondelver") {
+        this.game.player.setupDungeonDelverInventory();
+      } else if (modeWithoutNum === "summerlab") {
+        this.game.player.setupSummerLabInventory();
+      }
+      
+      // Force refresh held items
+      this.game.player.renderer.heldItemType = -1;
+      this.game.player.renderer.offHandItemType = -1;
+    };
+
     networkManager.onInit = (data: IGameStateData) => {
       const urlParams = new URLSearchParams(window.location.search);
       const serverName = urlParams.get("server") || "dungeondelver";
+
+      if (data.phase !== undefined) {
+         (window as any).__FORCE_SUMMER_LAB_PHASE = data.phase;
+      }
 
       this.game.player.hasReceivedInitialRespawn = false;
       useGameStore.getState().setIsMapLoading(true);
@@ -217,7 +248,7 @@ export class ClientNetworkSync {
       );
 
       const myName =
-        settingsManager.getSettings().username || getRandomCutePlayerName();
+        settingsManager.getSettings().username || "Player";
 
       networkManager.join(
         joinPos,
@@ -357,7 +388,7 @@ export class ClientNetworkSync {
 
       // 2. Check sunlight exposure (raycast straight up)
       let isExposed = true;
-      const maxHeight = 1540; // CHUNK_HEIGHT (1600) + WORLD_Y_OFFSET (-60)
+      const maxHeight = 324; // CHUNK_HEIGHT (384) + WORLD_Y_OFFSET (-60)
       for (let y = py + 1; y < maxHeight; y++) {
         const block = this.game.world.getBlock(px, y, pz);
         if (block !== 0 && !isTransparent(block)) {
@@ -399,6 +430,7 @@ export class ClientNetworkSync {
       useUIStore.getState().forceCloseAllMenus();
       useGameStore.getState().setIsMapLoading(true);
       this.game.player.hasReceivedInitialRespawn = false;
+      this.game.player.inputController.setGameActive(false);
       this.game.entityManager.clearEntities();
       this.game.world.reset(this.game.currentMode);
       useGameStore.getState().clearChatMessages();
@@ -413,6 +445,9 @@ export class ClientNetworkSync {
         this.game.player.setupSummerLabInventory();
       } else {
         this.game.player.inventory.clear();
+      }
+      if (this.game.chocolateFluidSystem) {
+        this.game.chocolateFluidSystem.clearAllSplats();
       }
       if (data.mobs) {
         for (const id in data.mobs) {

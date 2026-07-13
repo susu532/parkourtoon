@@ -62,32 +62,155 @@ export function useGameEngine() {
       mediaQuery.addListener(handler);
     }
 
+    let prevEmoteWheelOpen = false;
+    let prevEmojiWheelOpen = false;
+
     const unsubUI = useUIStore.subscribe((state) => {
+      const {
+        isInventoryOpen,
+        isShopOpen,
+        isSettingsOpen,
+        isPauseMenuOpen,
+        isServerJoinOpen,
+        isLaunchMenuOpen,
+        isHubPageOpen,
+        isChestOpen,
+        isLoadoutOpen,
+        isEmojiWheelOpen,
+        isEmoteWheelOpen,
+        showTutorialPopup
+      } = state;
+
       if (
-        state.isInventoryOpen ||
-        state.isShopOpen ||
-        state.isSettingsOpen ||
-        state.isPauseMenuOpen ||
-        state.isServerJoinOpen ||
-        state.isLaunchMenuOpen ||
-        state.isChestOpen ||
-        state.isLoadoutOpen ||
-        state.isEmojiWheelOpen ||
-        state.isEmoteWheelOpen ||
-        state.showTutorialPopup
+        isInventoryOpen ||
+        isShopOpen ||
+        isSettingsOpen ||
+        isPauseMenuOpen ||
+        isServerJoinOpen ||
+        isLaunchMenuOpen ||
+        isHubPageOpen ||
+        isChestOpen ||
+        isLoadoutOpen ||
+        isEmojiWheelOpen ||
+        isEmoteWheelOpen ||
+        showTutorialPopup
       ) {
         if (document.pointerLockElement) {
           document.exitPointerLock?.();
         }
+      } else {
+        const emoteClosed = prevEmoteWheelOpen && !isEmoteWheelOpen;
+        const emojiClosed = prevEmojiWheelOpen && !isEmojiWheelOpen;
+        if (emoteClosed || emojiClosed) {
+          const isActuallyMobile =
+            /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+              navigator.userAgent,
+            );
+          const touchCapable =
+            "ontouchstart" in window || navigator.maxTouchPoints > 0;
+          const isMacTouch =
+            navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+          const isMobileCheck =
+            isActuallyMobile ||
+            isMacTouch ||
+            (touchCapable && window.innerWidth < 1024);
+
+          if (!isMobileCheck) {
+            setTimeout(() => {
+              const currentState = useUIStore.getState();
+              if (
+                !currentState.isInventoryOpen &&
+                !currentState.isShopOpen &&
+                !currentState.isSettingsOpen &&
+                !currentState.isPauseMenuOpen &&
+                !currentState.isServerJoinOpen &&
+                !currentState.isLaunchMenuOpen &&
+                !currentState.isHubPageOpen &&
+                !currentState.isChestOpen &&
+                !currentState.isLoadoutOpen &&
+                !currentState.isEmojiWheelOpen &&
+                !currentState.isEmoteWheelOpen &&
+                !currentState.showTutorialPopup
+              ) {
+                const activeGame = (window as any).game;
+                if (activeGame && activeGame.controls) {
+                  try {
+                    activeGame.controls.lock();
+                    audioManager.resume();
+                  } catch (err) {
+                    console.warn("Auto-re-lock pointer failed:", err);
+                  }
+                }
+              }
+            }, 50);
+          }
+        }
       }
+
+      prevEmoteWheelOpen = isEmoteWheelOpen;
+      prevEmojiWheelOpen = isEmojiWheelOpen;
     });
+
+    let prevLeaderboardOpen = false;
+    let prevColorPickerOpen = false;
 
     const unsubGame = useGameStore.subscribe((state) => {
       if (state.isFluidColorPickerOpen || state.showLeaderboard) {
         if (document.pointerLockElement) {
           document.exitPointerLock?.();
         }
+      } else {
+        const lbClosed = prevLeaderboardOpen && !state.showLeaderboard;
+        const colorClosed = prevColorPickerOpen && !state.isFluidColorPickerOpen;
+        
+        if (lbClosed || colorClosed) {
+          const isActuallyMobile =
+            /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+              navigator.userAgent,
+            );
+          const touchCapable =
+            "ontouchstart" in window || navigator.maxTouchPoints > 0;
+          const isMacTouch =
+            navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+          const isMobileCheck =
+            isActuallyMobile ||
+            isMacTouch ||
+            (touchCapable && window.innerWidth < 1024);
+
+          if (!isMobileCheck) {
+            setTimeout(() => {
+              const currentState = useUIStore.getState();
+              if (
+                !currentState.isInventoryOpen &&
+                !currentState.isShopOpen &&
+                !currentState.isSettingsOpen &&
+                !currentState.isPauseMenuOpen &&
+                !currentState.isServerJoinOpen &&
+                !currentState.isLaunchMenuOpen &&
+                !currentState.isHubPageOpen &&
+                !currentState.isChestOpen &&
+                !currentState.isLoadoutOpen &&
+                !currentState.isEmojiWheelOpen &&
+                !currentState.isEmoteWheelOpen &&
+                !currentState.showTutorialPopup
+              ) {
+                const activeGame = (window as any).game;
+                if (activeGame && activeGame.controls) {
+                  try {
+                    activeGame.controls.lock();
+                    audioManager.resume();
+                  } catch (err) {
+                    console.warn("Auto-re-lock pointer failed:", err);
+                  }
+                }
+              }
+            }, 50);
+          }
+        }
       }
+      
+      prevLeaderboardOpen = state.showLeaderboard;
+      prevColorPickerOpen = state.isFluidColorPickerOpen;
     });
 
     return () => {
@@ -104,7 +227,10 @@ export function useGameEngine() {
   }, []);
 
   const [showDebug, setShowDebug] = useState(false);
-  const pointerLockSM = useRef(new PointerLockStateMachine());
+  const pointerLockSM = useRef<PointerLockStateMachine | null>(null);
+  if (!pointerLockSM.current) {
+    pointerLockSM.current = new PointerLockStateMachine();
+  }
   const suppressPauseMenu = useRef(false);
 
   const [gameKey, setGameKey] = useState(0);
@@ -136,6 +262,7 @@ export function useGameEngine() {
       if (locked) {
         CrazyGamesManager.gameplayStart();
         useGameStore.getState().setIsFluidColorPickerOpen(false);
+        useUIStore.getState().setTyping(false);
       } else {
         CrazyGamesManager.gameplayStop();
         // Open pause menu when unlocking if not in other specific menus and not suppressed
@@ -152,6 +279,7 @@ export function useGameEngine() {
             !state.isLoadoutOpen &&
             !state.isServerJoinOpen &&
             !state.isLaunchMenuOpen &&
+            !state.isHubPageOpen &&
             !state.showTutorialPopup &&
             !gameStoreState.isFluidColorPickerOpen &&
             !gameStoreState.showLeaderboard &&
@@ -177,6 +305,7 @@ export function useGameEngine() {
         isSettingsOpen: settings,
         isPauseMenuOpen: pause,
         isChestOpen: chest,
+        isHubPageOpen,
       } = state;
 
       const isInputFocused =
@@ -187,6 +316,9 @@ export function useGameEngine() {
       if (isInputFocused && e.code !== "Escape" && e.code !== "Enter") return;
 
       if (typing && e.code !== "Enter" && e.code !== "Escape") return;
+      
+      // If the intro hub page is open, ignore almost everything else
+      if (isHubPageOpen && e.code !== "Enter") return;
 
       if (e.code === "F3") {
         e.preventDefault();
@@ -202,8 +334,10 @@ export function useGameEngine() {
         const newState = !state.isEmojiWheelOpen;
         state.setEmojiWheelOpen(newState);
         if (newState) {
-          suppressPauseMenu.current = true;
-          (window as any).suppressPauseMenu = true;
+          if (document.pointerLockElement) {
+            suppressPauseMenu.current = true;
+            (window as any).suppressPauseMenu = true;
+          }
           newGame.controls.unlock();
           state.setSettingsOpen(false);
           state.setPauseMenuOpen(false);
@@ -218,8 +352,10 @@ export function useGameEngine() {
         const newState = !state.isEmoteWheelOpen;
         state.setEmoteWheelOpen(newState);
         if (newState) {
-          suppressPauseMenu.current = true;
-          (window as any).suppressPauseMenu = true;
+          if (document.pointerLockElement) {
+            suppressPauseMenu.current = true;
+            (window as any).suppressPauseMenu = true;
+          }
           newGame.controls.unlock();
           state.setSettingsOpen(false);
           state.setPauseMenuOpen(false);
@@ -238,7 +374,9 @@ export function useGameEngine() {
         }
         state.setInventoryOpen(!state.isInventoryOpen);
         if (!state.isInventoryOpen) {
-          suppressPauseMenu.current = true;
+          if (document.pointerLockElement) {
+            suppressPauseMenu.current = true;
+          }
           newGame.controls.unlock();
           state.setSettingsOpen(false);
           state.setPauseMenuOpen(false);
@@ -249,7 +387,10 @@ export function useGameEngine() {
 
       if (e.code === "Enter") {
         if (locked && !isInputFocused) {
-          // Do not unlock controls here to keep chat completely seamless
+          if (document.pointerLockElement) {
+            suppressPauseMenu.current = true;
+          }
+          newGame.controls.unlock();
           state.setTyping(true);
         }
       }
@@ -271,7 +412,9 @@ export function useGameEngine() {
             gState.setIsFluidColorPickerOpen(nextState);
 
             if (nextState) {
-              suppressPauseMenu.current = true;
+              if (document.pointerLockElement) {
+                suppressPauseMenu.current = true;
+              }
               newGame.controls.unlock();
             } else if (!isMobile) {
               trySafeLock(false);
@@ -290,15 +433,17 @@ export function useGameEngine() {
           isChestOpen: chest,
           isServerJoinOpen: serverJoin,
           isLaunchMenuOpen: launchMenu,
+          isHubPageOpen: hubPage,
           isLoadoutOpen: loadout,
           isEmojiWheelOpen: emojiWheel,
           isEmoteWheelOpen: emoteWheel,
-          showTutorialPopup: tutorial,
         } = state;
         const colorPickerOpen = useGameStore.getState().isFluidColorPickerOpen;
 
         if (isInputFocused) {
-          suppressPauseMenu.current = true;
+          if (document.pointerLockElement) {
+            suppressPauseMenu.current = true;
+          }
           (e.target as HTMLElement).blur();
           state.setTyping(false);
           if (!isMobile) {
@@ -319,8 +464,7 @@ export function useGameEngine() {
           loadout ||
           colorPickerOpen ||
           emojiWheel ||
-          emoteWheel ||
-          tutorial
+          emoteWheel
         ) {
           state.setInventoryOpen(false);
           state.setShopOpen(false);
@@ -332,16 +476,13 @@ export function useGameEngine() {
           state.setLaunchMenuOpen(false);
           state.setLoadoutOpen(false);
           state.setEmojiWheelOpen(false);
+          state.setEmoteWheelOpen(false);
           useGameStore.getState().setIsFluidColorPickerOpen(false);
-          if (tutorial) {
-            state.setShowTutorialPopup(false);
-            CrazyGamesManager.gameplayStart();
-          }
 
           if (!isMobile) {
             trySafeLock(true);
           }
-        } else if (!useGameStore.getState().isMapLoading) {
+        } else if (!useGameStore.getState().isMapLoading && !hubPage) {
           newGame.controls.unlock();
           state.setPauseMenuOpen(true);
         }
@@ -350,7 +491,7 @@ export function useGameEngine() {
 
     const handleOpenShop = (e: any) => {
       useUIStore.getState().setCurrentNPC(e.detail.npc);
-      suppressPauseMenu.current = true;
+      if (document.pointerLockElement) suppressPauseMenu.current = true;
       useUIStore.getState().setShopOpen(true);
       newGame.controls.unlock();
     };
@@ -359,19 +500,19 @@ export function useGameEngine() {
       const server = e.detail?.server || "skybridge";
       setTargetServer(server);
       useUIStore.getState().setCurrentNPC(e.detail?.npc || null);
-      suppressPauseMenu.current = true;
+      if (document.pointerLockElement) suppressPauseMenu.current = true;
       useUIStore.getState().setServerJoinOpen(true);
       newGame.controls.unlock();
     };
 
     const handleOpenLaunchMenu = () => {
-      suppressPauseMenu.current = true;
+      if (document.pointerLockElement) suppressPauseMenu.current = true;
       useUIStore.getState().setLaunchMenuOpen(true);
       newGame.controls.unlock();
     };
 
     const handleOpenChest = () => {
-      suppressPauseMenu.current = true;
+      if (document.pointerLockElement) suppressPauseMenu.current = true;
       useUIStore.getState().setChestOpen(true);
       newGame.controls.unlock();
     };
@@ -428,6 +569,7 @@ export function useGameEngine() {
         uiState.isPauseMenuOpen ||
         uiState.isServerJoinOpen ||
         uiState.isLaunchMenuOpen ||
+        uiState.isHubPageOpen ||
         uiState.isChestOpen ||
         uiState.isLoadoutOpen
       ) {
@@ -472,9 +614,9 @@ export function useGameEngine() {
 
     const handlePointerLockError = () => {
       console.warn("Pointer lock failed, restoring pause menu.");
-      if (!newGame.world.isHub) {
-        useUIStore.getState().setPauseMenuOpen(true);
-      }
+      // The browser denied pointer lock (e.g. cooldown). We shouldn't force open the pause menu
+      // because it causes unexpected UI pops (e.g., after picking a role).
+      // The player can simply click the screen to try locking again.
     };
 
     document.addEventListener("pointerlockerror", handlePointerLockError);
@@ -537,7 +679,7 @@ export function useGameEngine() {
         else if (serverName.startsWith("voidtrail")) displayName = "Void Trail";
         networkManager.receiveLocalMessage(
           "System",
-          `§bWelcome to ${displayName}!`,
+          `§bWelcome to Summer Lab!`,
         );
       }, 2000);
     }
@@ -624,7 +766,8 @@ export function useGameEngine() {
       !uiState.isEmojiWheelOpen &&
       !uiState.isEmoteWheelOpen &&
       !uiState.showTutorialPopup &&
-      !uiState.isLaunchMenuOpen
+      !uiState.isLaunchMenuOpen &&
+      !uiState.isHubPageOpen
     ) {
       const isTouch = e && e.pointerType === "touch";
       if (isTouch) {
@@ -647,39 +790,6 @@ export function useGameEngine() {
     }
   };
 
-  // Called directly from close-button handlers (inventory, shop, tutorial, etc.).
-  // Skips the cooldown check because a button click IS a user gesture — the browser
-  // will grant the lock. handleStart() can't be used here because its canLock()
-  // cooldown fires within 1250ms of the last unlock (which happens when the UI opens).
-  const handleRelock = () => {
-    if (!game || isMobile) return;
-    if (document.pointerLockElement === document.body) return;
-    const isMapLoading = useGameStore.getState().isMapLoading;
-    if (isMapLoading) return;
-    const uiState = useUIStore.getState();
-    if (
-      uiState.isInventoryOpen ||
-      uiState.isShopOpen ||
-      uiState.isSettingsOpen ||
-      uiState.isPauseMenuOpen ||
-      uiState.isServerJoinOpen ||
-      uiState.isLoadoutOpen ||
-      uiState.isEmojiWheelOpen ||
-      uiState.isEmoteWheelOpen ||
-      uiState.showTutorialPopup ||
-      uiState.isLaunchMenuOpen ||
-      uiState.isChestOpen ||
-      useGameStore.getState().isFluidColorPickerOpen ||
-      useGameStore.getState().showLeaderboard
-    ) return;
-    try {
-      game.controls.lock();
-      audioManager.resume();
-    } catch (err) {
-      console.warn("Relock after close failed:", err);
-    }
-  };
-
   return {
     containerRef,
     game,
@@ -687,7 +797,6 @@ export function useGameEngine() {
     targetServer,
     showDebug,
     handleStart,
-    handleRelock,
     setGameKey,
     gameKey,
   };

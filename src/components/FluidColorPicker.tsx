@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
-import { HexColorPicker } from "react-colorful";
-import { useGameStore } from "../store/gameStore";
-import { useUIStore } from "../store/uiStore";
-import { Droplet } from "lucide-react";
-import { ItemType } from "../game/Inventory";
-import { settingsManager } from "../game/Settings";
+import React, { useState, useEffect } from 'react';
+import { HexColorPicker } from 'react-colorful';
+import { useGameStore } from '../store/gameStore';
+import { useUIStore } from '../store/uiStore';
+import { Droplet } from 'lucide-react';
+import { ItemType } from '../game/Inventory';
+import { settingsManager } from '../game/Settings';
 
 export function FluidColorPicker({ game }: { game?: any }) {
   const isOpen = useGameStore((state) => state.isFluidColorPickerOpen);
@@ -12,12 +12,10 @@ export function FluidColorPicker({ game }: { game?: any }) {
   const fluidColor = useGameStore((state) => state.fluidColor);
   const setFluidColor = useGameStore((state) => state.setFluidColor);
   const hotbarIndex = useGameStore((state) => state.hotbarIndex);
-
+  
   const inventoryVersion = useGameStore((state) => state.inventoryVersion);
-
-  const [fluidKey, setFluidKey] = useState(
-    settingsManager.getSettings().keybinds.openFluidColorPicker,
-  );
+  
+  const [fluidKey, setFluidKey] = useState(settingsManager.getSettings().keybinds.openFluidColorPicker);
 
   useEffect(() => {
     const unsubscribe = settingsManager.subscribe((s) => {
@@ -31,14 +29,14 @@ export function FluidColorPicker({ game }: { game?: any }) {
 
   useEffect(() => {
     if (!hasHose && isOpen) {
-      setIsOpen(false);
+        setIsOpen(false);
     }
   }, [hasHose, isOpen, setIsOpen]);
 
   if (!game || !hasHose) return null;
 
   return (
-    <div
+    <div 
       className="absolute top-20 right-4 pointer-events-auto"
       onPointerDown={(e) => e.stopPropagation()}
     >
@@ -49,6 +47,12 @@ export function FluidColorPicker({ game }: { game?: any }) {
             setIsOpen(nextState);
             if (nextState) {
               game.controls.unlock();
+            } else {
+              setTimeout(() => {
+                try {
+                  game.controls.lock();
+                } catch(e) {}
+              }, 50);
             }
           }}
           className="bg-black/50 hover:bg-black/70 text-white p-4 rounded-full backdrop-blur-sm border border-white/10 transition-colors shadow-lg"
@@ -57,7 +61,7 @@ export function FluidColorPicker({ game }: { game?: any }) {
           <Droplet size={48} color={fluidColor} fill={fluidColor} />
         </button>
         <div className="absolute top-0 right-0 z-30 bg-black/70 border-2 border-white/40 rounded-md px-2 py-0.5 min-w-[28px] sm:min-w-[32px] text-center text-white text-[16px] sm:text-[20px] font-bold mc-text-shadow translate-x-2 -translate-y-2">
-          {fluidKey?.replace("Key", "").replace("Digit", "") || "F"}
+          {fluidKey?.replace('Key', '').replace('Digit', '') || 'F'}
         </div>
       </div>
 
@@ -66,15 +70,18 @@ export function FluidColorPicker({ game }: { game?: any }) {
           <div className="mb-2 text-xs font-semibold text-gray-300 uppercase tracking-wider">
             Fluid Color
           </div>
-          <HexColorPicker color={fluidColor} onChange={setFluidColor} />
+          <HexColorPicker
+            color={fluidColor}
+            onChange={setFluidColor}
+          />
           <div className="mt-3 flex gap-2">
             {[
-              "#3d1c04", // Chocolate
-              "#1e90ff", // Water
-              "#ff4500", // Lava
-              "#32cd32", // Slime
-              "#a24cbf", // Poison
-              "#ffcc00", // Honey
+              '#3d1c04', // Chocolate
+              '#1e90ff', // Water
+              '#ff4500', // Lava
+              '#32cd32', // Slime
+              '#a24cbf', // Poison
+              '#ffcc00', // Honey
             ].map((preset) => (
               <button
                 key={preset}

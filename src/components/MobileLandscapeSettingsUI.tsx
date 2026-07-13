@@ -5,6 +5,8 @@ import {
   GameSettings,
   DEFAULT_SETTINGS,
 } from "../game/Settings";
+import { networkManager } from "../game/NetworkManager";
+import { useGameStore } from "../store/gameStore";
 import {
   X,
   Settings as SettingsIcon,
@@ -37,6 +39,8 @@ const translations: Record<string, Record<string, string>> = {
     showDebug: "Show Info",
     resetButton: "Reset",
     doneButton: "Done",
+    serverRegion: "Server Region",
+    network: "Network",
   },
 };
 
@@ -48,7 +52,8 @@ export const MobileLandscapeSettingsUI: React.FC<MobileLandscapeSettingsUIProps>
     settingsManager.getSettings()
   );
   
-  const [activeTab, setActiveTab] = useState<"graphics" | "controls" | "audio" | "debug">("graphics");
+  const [initialRegion] = useState(settings.serverRegion);
+  const [activeTab, setActiveTab] = useState<"network" | "graphics" | "controls" | "audio" | "debug">("network");
   
   // Use a listener if settings manager supports it
   useEffect(() => {
@@ -78,6 +83,14 @@ export const MobileLandscapeSettingsUI: React.FC<MobileLandscapeSettingsUIProps>
     setSettings(DEFAULT_SETTINGS);
   };
 
+  const handleClose = () => {
+// @ts-ignore
+    if (initialRegion !== settingsManager.getSettings().serverRegion) {
+      networkManager.initMatchmaking(useGameStore.getState().currentMode);
+    }
+    onClose();
+  };
+
   const t = translations["en"] || translations.en;
 
   if (!isOpen) return null;
@@ -105,7 +118,7 @@ export const MobileLandscapeSettingsUI: React.FC<MobileLandscapeSettingsUIProps>
             </h2>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="w-8 h-8 flex items-center justify-center bg-[#8B8B8B] border-[2px] border-t-white border-l-white border-b-[#373737] border-r-[#373737] hover:bg-[#A0A0A0] active:border-t-[#373737] active:border-l-[#373737] active:border-b-white active:border-r-white group"
           >
             <X className="w-5 h-5 text-white group-active:translate-y-[1px]" />
@@ -116,6 +129,12 @@ export const MobileLandscapeSettingsUI: React.FC<MobileLandscapeSettingsUIProps>
         <div className="flex-1 flex overflow-hidden">
           {/* Sidebar Tabs */}
           <div className="w-48 flex flex-col p-2 gap-2 border-r-[4px] border-[#555555] bg-[#A0A0A0] overflow-y-auto custom-scrollbar">
+            <TabButton 
+              active={activeTab === "network"} 
+              onClick={() => setActiveTab("network")} 
+              icon={<Globe />} 
+              label={t.network} 
+            />
             <TabButton 
               active={activeTab === "graphics"} 
               onClick={() => setActiveTab("graphics")} 
@@ -153,6 +172,27 @@ export const MobileLandscapeSettingsUI: React.FC<MobileLandscapeSettingsUIProps>
                   exit={{ opacity: 0, x: -10 }}
                   className="space-y-6"
                 >
+                  {activeTab === "network" && (
+                    <div className="space-y-4">
+                      {/* Server Region Selection */}
+                      <div className="p-3 bg-[#8B8B8B] border-[2px] border-t-[#373737] border-l-[#373737] border-b-white border-r-white">
+                        <label className="text-white font-bold mc-text-shadow block mb-2">
+                          {t.serverRegion}
+                        </label>
+                        <select
+// @ts-ignore
+                          value={settings.serverRegion || 'auto'}
+                          // @ts-ignore
+                          onChange={(e) => updateSetting("serverRegion", e.target.value)}
+                          className="w-full bg-[#373737] text-white font-bold p-2 outline-none border-[2px] border-t-[#111] border-l-[#111] border-b-[#666] border-r-[#666]"
+                        >
+                          <option value="auto">US East</option>
+                          
+                        </select>
+                      </div>
+                    </div>
+                  )}
+
                   {activeTab === "graphics" && (
                     <div className="space-y-4">
                       
@@ -280,7 +320,7 @@ export const MobileLandscapeSettingsUI: React.FC<MobileLandscapeSettingsUIProps>
           </button>
           
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="px-8 py-2 bg-[#55FF55] border-[2px] border-t-white border-l-white border-b-[#339933] border-r-[#339933] text-[#333] font-bold mc-text-shadow-none hover:bg-[#66FF66] active:border-t-[#339933] active:border-l-[#339933] active:border-b-white active:border-r-white active:pl-9 active:pr-7 select-none"
           >
             {t.doneButton}

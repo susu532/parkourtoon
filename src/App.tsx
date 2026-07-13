@@ -11,6 +11,7 @@ import { StatsPanel } from './components/StatsPanel';
 import { EnvironmentOverlays } from './components/EnvironmentOverlays';
 import { useUI } from './store/uiStore';
 import { LoadoutUI } from './components/LoadoutUI';
+import { HubPageUI } from './components/HubPageUI';
 
 export default function App() {
   const {
@@ -20,7 +21,6 @@ export default function App() {
     targetServer,
     showDebug,
     handleStart,
-    handleRelock,
     setGameKey,
     gameKey
   } = useGameEngine();
@@ -31,6 +31,7 @@ export default function App() {
     <div 
       className="relative w-full h-screen overflow-hidden bg-black font-sans cursor-crosshair"
       onPointerDown={handleStart}
+      onClick={handleStart}
     >
       <div key={gameKey} ref={containerRef} className="absolute inset-0 w-full h-full" />
       
@@ -43,24 +44,25 @@ export default function App() {
         game={game} 
         isMobile={isMobile} 
         showDebug={showDebug} 
-        handleStart={handleStart}
-        handleRelock={handleRelock}
+        handleStart={handleStart} 
         setPauseMenuOpen={setPauseMenuOpen} 
       />
 
       <GameMenus 
         game={game} 
         targetServer={targetServer} 
-        handleStart={handleStart}
-        handleRelock={handleRelock}
+        handleStart={handleStart} 
         setGameKey={setGameKey} 
         isMobile={isMobile}
       />
 
-      <LoadoutUI game={game} />
+      <LoadoutUI game={game} isMobile={isMobile} />
 
       {/* Map Loading Screen */}
       <MapLoadingScreen />
+
+      {/* Hub Page UI (username prompt) */}
+      <HubPageUI />
 
       <StatsPanel />
 

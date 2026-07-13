@@ -1,5 +1,6 @@
 import { settingsManager } from "./Settings";
 import * as THREE from "three";
+import { audioManager } from "./AudioManager";
 
 class HoseSoundSynth {
   private ctx: AudioContext | null = null;
@@ -26,6 +27,8 @@ class HoseSoundSynth {
   private initialized = false;
   private userVolume = 1.0;
 
+  private isMuted: boolean = false;
+
   constructor() {
     if (typeof window !== "undefined") {
       // Subscribe to settings for volume updates
@@ -34,6 +37,12 @@ class HoseSoundSynth {
         this.updateMasterVolume();
       });
       this.userVolume = settingsManager.getSettings().volume;
+      this.isMuted = audioManager.getMuted();
+      
+      window.addEventListener("audio_mute_change", ((e: CustomEvent) => {
+        this.isMuted = e.detail;
+        this.updateMasterVolume();
+      }) as EventListener);
     }
   }
 
@@ -155,16 +164,16 @@ class HoseSoundSynth {
 
   private updateMasterVolume() {
     if (!this.initialized || !this.ctx || !this.masterGain) return;
-    this.masterGain.gain.setTargetAtTime(this.userVolume, this.ctx.currentTime, 0.05);
+    const finalVolume = this.isMuted ? 0 : this.userVolume;
+    this.masterGain.gain.setTargetAtTime(finalVolume, this.ctx.currentTime, 0.05);
   }
 
   public setLocalSprayActive(type: "water" | "chocolate" | null) {
     if (typeof window === "undefined") return;
 
-    // Try to unlock/resume context if it is suspended
     const context = THREE.AudioContext.getContext() as AudioContext;
     if (context && context.state === "suspended") {
-      context.resume().catch(() => {});
+      // Don't auto resume here, audioManager handles resume
     }
 
     if (!this.initialized && type !== null) {
@@ -184,9 +193,9 @@ class HoseSoundSynth {
       this.waterGain.gain.setTargetAtTime(0.38, now, timeConstant);
       this.chocolateGain.gain.setTargetAtTime(0, now, timeConstant);
     } else if (type === "chocolate") {
-      // Calming mud-splatting fluid
+      // Calming mud-splatting fluid, increased volume
       this.waterGain.gain.setTargetAtTime(0, now, timeConstant);
-      this.chocolateGain.gain.setTargetAtTime(0.28, now, timeConstant);
+      this.chocolateGain.gain.setTargetAtTime(0.75, now, timeConstant);
     } else {
       // Fade completely to silent
       this.waterGain.gain.setTargetAtTime(0, now, timeConstant);

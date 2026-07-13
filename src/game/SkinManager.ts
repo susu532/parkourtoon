@@ -224,12 +224,31 @@ export function generateSkin(seed: string): THREE.Texture {
     "#fbbf24",
   ];
 
-  const skinColor = skinColors[Math.floor(random() * skinColors.length)];
-  const hairColor = hairColors[Math.floor(random() * hairColors.length)];
-  const eyeColor = eyeColors[Math.floor(random() * eyeColors.length)];
-  const shirtColor = shirtColors[Math.floor(random() * shirtColors.length)];
-  const pantsColor = pantsColors[Math.floor(random() * pantsColors.length)];
-  const shoeColor = shirtColors[Math.floor(random() * shirtColors.length)];
+  let skinColor = skinColors[Math.floor(random() * skinColors.length)];
+  let hairColor = hairColors[Math.floor(random() * hairColors.length)];
+  let eyeColor = eyeColors[Math.floor(random() * eyeColors.length)];
+  let shirtColor = shirtColors[Math.floor(random() * shirtColors.length)];
+  let pantsColor = pantsColors[Math.floor(random() * pantsColors.length)];
+  let shoeColor = shirtColors[Math.floor(random() * shirtColors.length)];
+  let accessoryType = Math.floor(random() * 3);
+  let jacketColor = pantsColors[Math.floor(random() * pantsColors.length)];
+  let hasJacket = random() > 0.5;
+  let hasNoise = true;
+
+  if (seed.startsWith("custom:")) {
+    // format: custom:skin:hair:eye:shirt:pants:shoe:accessoryType:hasJacket:jacketColor:hasNoise
+    const parts = seed.split(":");
+    if (parts[1]) skinColor = parts[1];
+    if (parts[2]) hairColor = parts[2];
+    if (parts[3]) eyeColor = parts[3];
+    if (parts[4]) shirtColor = parts[4];
+    if (parts[5]) pantsColor = parts[5];
+    if (parts[6]) shoeColor = parts[6];
+    if (parts[7]) accessoryType = parseInt(parts[7]);
+    if (parts[8]) hasJacket = parts[8] === "true";
+    if (parts[9]) jacketColor = parts[9];
+    if (parts[10]) hasNoise = parts[10] !== "false";
+  }
 
   // Fill with transparent first
   ctx.clearRect(0, 0, 64, 64);
@@ -289,7 +308,6 @@ export function generateSkin(seed: string): THREE.Texture {
   drawShoe(UV_MAP.legL);
 
   // 5. Hair
-  // Top, Back, Right, Left
   ctx.fillStyle = hairColor;
   ctx.fillRect(UV_MAP.head.top[0], UV_MAP.head.top[1], 8, 8);
   ctx.fillRect(UV_MAP.head.back[0], UV_MAP.head.back[1], 8, 8);
@@ -314,14 +332,13 @@ export function generateSkin(seed: string): THREE.Texture {
   ctx.fillRect(fx + 5, fy + 4, 1, 2);
 
   // 7. Outer Layer Details
-  // Add a random accessory (glasses, headband, or nothing)
-  const accessoryType = Math.floor(random() * 3);
   const outerFx = UV_MAP_OUTER.head.front[0];
   const outerFy = UV_MAP_OUTER.head.front[1];
 
   if (accessoryType === 0) {
     // Glasses
-    ctx.fillStyle = shirtColors[Math.floor(random() * shirtColors.length)];
+    const frameColor = hairColor === "#67e8f9" || hairColor === "#bef264" ? "#ef4444" : "#67e8f9";
+    ctx.fillStyle = frameColor;
     ctx.fillRect(outerFx, outerFy + 3, 8, 1); // Frame top
     ctx.fillRect(outerFx, outerFy + 4, 1, 2); // Left edge
     ctx.fillRect(outerFx + 3, outerFy + 4, 2, 2); // Middle
@@ -329,46 +346,53 @@ export function generateSkin(seed: string): THREE.Texture {
     ctx.fillRect(outerFx + 1, outerFy + 6, 2, 1); // Left bottom
     ctx.fillRect(outerFx + 5, outerFy + 6, 2, 1); // Right bottom
     // Sides
-    ctx.fillRect(
-      UV_MAP_OUTER.head.right[0] + 1,
-      UV_MAP_OUTER.head.right[1] + 3,
-      7,
-      1,
-    );
-    ctx.fillRect(
-      UV_MAP_OUTER.head.left[0],
-      UV_MAP_OUTER.head.left[1] + 3,
-      7,
-      1,
-    );
+    ctx.fillRect(UV_MAP_OUTER.head.right[0] + 1, UV_MAP_OUTER.head.right[1] + 3, 7, 1);
+    ctx.fillRect(UV_MAP_OUTER.head.left[0], UV_MAP_OUTER.head.left[1] + 3, 7, 1);
   } else if (accessoryType === 1) {
     // Headband
-    const bandColor = shirtColors[Math.floor(random() * shirtColors.length)];
-    ctx.fillStyle = bandColor;
+    ctx.fillStyle = "#ef4444";
     ctx.fillRect(outerFx, outerFy + 2, 8, 2);
-    ctx.fillRect(
-      UV_MAP_OUTER.head.right[0],
-      UV_MAP_OUTER.head.right[1] + 2,
-      8,
-      2,
-    );
-    ctx.fillRect(
-      UV_MAP_OUTER.head.left[0],
-      UV_MAP_OUTER.head.left[1] + 2,
-      8,
-      2,
-    );
-    ctx.fillRect(
-      UV_MAP_OUTER.head.back[0],
-      UV_MAP_OUTER.head.back[1] + 2,
-      8,
-      2,
-    );
+    ctx.fillRect(UV_MAP_OUTER.head.right[0], UV_MAP_OUTER.head.right[1] + 2, 8, 2);
+    ctx.fillRect(UV_MAP_OUTER.head.left[0], UV_MAP_OUTER.head.left[1] + 2, 8, 2);
+    ctx.fillRect(UV_MAP_OUTER.head.back[0], UV_MAP_OUTER.head.back[1] + 2, 8, 2);
+  } else if (accessoryType === 2) {
+    // Golden Crown
+    ctx.fillStyle = "#ffd700";
+    ctx.fillRect(outerFx, outerFy + 1, 8, 2);
+    ctx.fillRect(outerFx, outerFy, 1, 1);
+    ctx.fillRect(outerFx + 3, outerFy, 2, 1);
+    ctx.fillRect(outerFx + 7, outerFy, 1, 1);
+    ctx.fillStyle = "#ef4444"; // jewel
+    ctx.fillRect(outerFx + 4, outerFy + 1, 1, 1);
+    
+    ctx.fillStyle = "#ffd700";
+    ctx.fillRect(UV_MAP_OUTER.head.right[0], UV_MAP_OUTER.head.right[1] + 1, 8, 2);
+    ctx.fillRect(UV_MAP_OUTER.head.left[0], UV_MAP_OUTER.head.left[1] + 1, 8, 2);
+    ctx.fillRect(UV_MAP_OUTER.head.back[0], UV_MAP_OUTER.head.back[1] + 1, 8, 2);
+  } else if (accessoryType === 3) {
+    // Gamer Headset
+    ctx.fillStyle = "#1e1b4b";
+    ctx.fillRect(UV_MAP_OUTER.head.left[0] + 2, UV_MAP_OUTER.head.left[1] + 3, 4, 4);
+    ctx.fillRect(UV_MAP_OUTER.head.right[0] + 2, UV_MAP_OUTER.head.right[1] + 3, 4, 4);
+    ctx.fillStyle = "#22c55e"; // headset detail
+    ctx.fillRect(UV_MAP_OUTER.head.left[0] + 3, UV_MAP_OUTER.head.left[1] + 4, 2, 2);
+    ctx.fillRect(UV_MAP_OUTER.head.right[0] + 3, UV_MAP_OUTER.head.right[1] + 4, 2, 2);
+  } else if (accessoryType === 4) {
+    // Cute ears
+    ctx.fillStyle = hairColor;
+    ctx.fillRect(outerFx + 1, outerFy - 1, 2, 2);
+    ctx.fillRect(outerFx + 5, outerFy - 1, 2, 2);
+    ctx.fillStyle = "#fda4af"; // pink inside
+    ctx.fillRect(outerFx + 1, outerFy, 1, 1);
+    ctx.fillRect(outerFx + 6, outerFy, 1, 1);
+  } else if (accessoryType === 5) {
+    // Ninja Face Mask
+    ctx.fillStyle = "#1e293b";
+    ctx.fillRect(outerFx, outerFy + 5, 8, 3);
   }
 
-  // Jacket Overlay (sometimes)
-  if (random() > 0.5) {
-    const jacketColor = pantsColors[Math.floor(random() * pantsColors.length)];
+  // Jacket Overlay
+  if (hasJacket) {
     ctx.fillStyle = jacketColor;
     // Body outer
     fillRegion(UV_MAP_OUTER.body, jacketColor);
@@ -379,24 +403,26 @@ export function generateSkin(seed: string): THREE.Texture {
       4,
       12,
     );
-    // Arm outer (sleeves)
+    // Arm outer sleeves
     fillRegion(UV_MAP_OUTER.armR, jacketColor);
     fillRegion(UV_MAP_OUTER.armL, jacketColor);
   }
 
   // 8. Add Noise for texture
-  const imgData = ctx.getImageData(0, 0, 64, 64);
-  const data = imgData.data;
-  for (let i = 0; i < data.length; i += 4) {
-    if (data[i + 3] > 0) {
-      // If not transparent
-      const noise = (random() - 0.5) * 30;
-      data[i] = Math.min(255, Math.max(0, data[i] + noise));
-      data[i + 1] = Math.min(255, Math.max(0, data[i + 1] + noise));
-      data[i + 2] = Math.min(255, Math.max(0, data[i + 2] + noise));
+  if (hasNoise) {
+    const imgData = ctx.getImageData(0, 0, 64, 64);
+    const data = imgData.data;
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] > 0) {
+        // If not transparent
+        const noise = (random() - 0.5) * 30;
+        data[i] = Math.min(255, Math.max(0, data[i] + noise));
+        data[i + 1] = Math.min(255, Math.max(0, data[i + 1] + noise));
+        data[i + 2] = Math.min(255, Math.max(0, data[i + 2] + noise));
+      }
     }
+    ctx.putImageData(imgData, 0, 0);
   }
-  ctx.putImageData(imgData, 0, 0);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.magFilter = THREE.NearestFilter;

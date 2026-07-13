@@ -17,6 +17,34 @@ export class CrazyGamesManager {
         this.initialized = true;
         console.log("CrazyGames SDK initialized");
 
+        if (cg) {
+          // SDK v2 / legacy wrapper listener
+          if (typeof cg.addEventListener === "function") {
+            cg.addEventListener("audioEvent", (event: any) => {
+              console.log("CrazyGames audioEvent:", event);
+              if (event.action === "mute" || event === "mute") {
+                audioManager.setMuted(true);
+              } else if (event.action === "unmute" || event === "unmute") {
+                audioManager.setMuted(false);
+              }
+            });
+          }
+
+          // SDK v3 listeners (callbacks on SDK.game or SDK.audio)
+          if (cg.game && typeof cg.game.addAudioListener === "function") {
+             cg.game.addAudioListener((mute: boolean) => {
+                 console.log("CrazyGames game.addAudioListener:", mute);
+                 audioManager.setMuted(mute);
+             });
+          }
+          if (cg.audio && typeof cg.audio.addAudioListener === "function") {
+             cg.audio.addAudioListener((mute: boolean) => {
+                 console.log("CrazyGames audio.addAudioListener:", mute);
+                 audioManager.setMuted(mute);
+             });
+          }
+        }
+
         if (this.pendingLoadingStart) {
           try {
             cg.game.loadingStart();
@@ -235,5 +263,32 @@ export class CrazyGamesManager {
     } catch (e) {
       return null;
     }
+  }
+
+  static async syncData(key: string, value: string) {
+    if (this.initialized && typeof window !== "undefined") {
+      const cg = (window as any).CrazyGames?.SDK;
+      if (cg?.data?.setItem) {
+        try {
+          await cg.data.setItem(key, value);
+        } catch (e) {
+          console.warn("CrazyGames SDK data setItem error", e);
+        }
+      }
+    }
+  }
+
+  static async getData(key: string): Promise<string | null> {
+    if (this.initialized && typeof window !== "undefined") {
+      const cg = (window as any).CrazyGames?.SDK;
+      if (cg?.data?.getItem) {
+        try {
+          return await cg.data.getItem(key);
+        } catch (e) {
+          console.warn("CrazyGames SDK data getItem error", e);
+        }
+      }
+    }
+    return null;
   }
 }

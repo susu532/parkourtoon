@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from "react";
-import { skyBridgeManager, PlayerStats } from "../game/SkyBridgeManager";
+
+import React, { useEffect, useState } from 'react';
+import { skyBridgeManager, PlayerStats } from '../game/SkyBridgeManager';
 
 export const SkyBridgeActionBar: React.FC = () => {
-  const [stats, setStats] = useState<PlayerStats>(
-    skyBridgeManager.effectiveStats,
-  );
+  const [stats, setStats] = useState<PlayerStats>(skyBridgeManager.effectiveStats);
 
   useEffect(() => {
     let frameId: number;
@@ -16,7 +15,7 @@ export const SkyBridgeActionBar: React.FC = () => {
 
     const update = () => {
       const stats = skyBridgeManager.effectiveStats;
-
+      
       if (
         stats.health !== lastHealth ||
         stats.maxHealth !== lastMaxHealth ||
@@ -47,7 +46,7 @@ export const SkyBridgeActionBar: React.FC = () => {
           {Math.floor(stats.health)}/{stats.maxHealth}❤
         </div>
         <div className="w-8 sm:w-24 md:w-40 h-1 md:h-3 bg-black/60 border border-black/80 md:border-2 rounded-sm overflow-hidden">
-          <div
+          <div 
             className="h-full bg-[#FF5555] transition-all duration-300"
             style={{ width: `${(stats.health / stats.maxHealth) * 100}%` }}
           />
@@ -67,11 +66,9 @@ export const SkyBridgeActionBar: React.FC = () => {
           {Math.floor(stats.intelligence)}/{stats.maxIntelligence}✎
         </div>
         <div className="w-8 sm:w-24 md:w-40 h-1 md:h-3 bg-black/60 border border-black/80 md:border-2 rounded-sm overflow-hidden">
-          <div
+          <div 
             className="h-full bg-[#55FFFF] transition-all duration-300"
-            style={{
-              width: `${(stats.intelligence / stats.maxIntelligence) * 100}%`,
-            }}
+            style={{ width: `${(stats.intelligence / stats.maxIntelligence) * 100}%` }}
           />
         </div>
       </div>
