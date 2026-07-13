@@ -79,7 +79,7 @@ export function MapLoadingScreen() {
               : {
                   backgroundColor: "#1E1E24",
                   backgroundImage:
-                    'url("https://raw.githubusercontent.com/susu532/sounds/main/minecraft/landscape.png")',
+                    'url("https://raw.githubusercontent.com/susu532/sounds/main/minecraft/a_resize_this_image_to.jpeg")',
                   backgroundSize: "cover",
                   backgroundPosition: "center",
                   backgroundRepeat: "no-repeat",

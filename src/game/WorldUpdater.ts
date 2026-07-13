@@ -5,6 +5,10 @@ import { settingsManager } from "./Settings";
 
 import { useGameStore } from "../store/gameStore";
 
+const tempBox = new THREE.Box3();
+const tempVec1 = new THREE.Vector3();
+const tempVec2 = new THREE.Vector3();
+
 export class WorldUpdater {
   world: World;
 
@@ -45,19 +49,18 @@ export class WorldUpdater {
         if (!this.world.getChunk(cx, cz) && !this.world.generatingChunks.has(key)) {
           let inFrustum = true;
           if (camera) {
-            const box = new THREE.Box3(
-              new THREE.Vector3(
-                cx * CHUNK_SIZE,
-                WORLD_Y_OFFSET,
-                cz * CHUNK_SIZE,
-              ),
-              new THREE.Vector3(
-                (cx + 1) * CHUNK_SIZE,
-                WORLD_Y_OFFSET + CHUNK_HEIGHT,
-                (cz + 1) * CHUNK_SIZE,
-              ),
+            tempVec1.set(
+              cx * CHUNK_SIZE,
+              WORLD_Y_OFFSET,
+              cz * CHUNK_SIZE
             );
-            inFrustum = frustum.intersectsBox(box);
+            tempVec2.set(
+              (cx + 1) * CHUNK_SIZE,
+              WORLD_Y_OFFSET + CHUNK_HEIGHT,
+              (cz + 1) * CHUNK_SIZE
+            );
+            tempBox.set(tempVec1, tempVec2);
+            inFrustum = frustum.intersectsBox(tempBox);
           }
           chunksToGenerate.push({ cx, cz, distSq: x * x + z * z, inFrustum });
         }
@@ -118,19 +121,18 @@ export class WorldUpdater {
         const dz = chunk.z - pcz;
         let inFrustum = true;
         if (camera) {
-          const box = new THREE.Box3(
-            new THREE.Vector3(
-              chunk.x * CHUNK_SIZE,
-              WORLD_Y_OFFSET,
-              chunk.z * CHUNK_SIZE,
-            ),
-            new THREE.Vector3(
-              (chunk.x + 1) * CHUNK_SIZE,
-              WORLD_Y_OFFSET + CHUNK_HEIGHT,
-              (chunk.z + 1) * CHUNK_SIZE,
-            ),
+          tempVec1.set(
+            chunk.x * CHUNK_SIZE,
+            WORLD_Y_OFFSET,
+            chunk.z * CHUNK_SIZE
           );
-          inFrustum = frustum.intersectsBox(box);
+          tempVec2.set(
+            (chunk.x + 1) * CHUNK_SIZE,
+            WORLD_Y_OFFSET + CHUNK_HEIGHT,
+            (chunk.z + 1) * CHUNK_SIZE
+          );
+          tempBox.set(tempVec1, tempVec2);
+          inFrustum = frustum.intersectsBox(tempBox);
         }
         chunksToMesh.push({ chunk, distSq: dx * dx + dz * dz, inFrustum });
       }
@@ -153,7 +155,7 @@ export class WorldUpdater {
       
       if (
         activeMeshing < maxConcurrent &&
-        performance.now() - startTime < maxTimePerFrame * 4
+        performance.now() - startTime < maxTimePerFrame
       ) {
         const cx = chunk.x;
         const cz = chunk.z;

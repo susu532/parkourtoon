@@ -54,26 +54,6 @@ self.onmessage = (e: MessageEvent<ChunkMesherRequest>) => {
   (self as unknown as Worker).postMessage(response, transfer as any);
 };
 
-// Auto-generated greedy mesher
-export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
-  let allAir = true;
-  for (let i = 0; i < data.blocks.length; i++) {
-    if (data.blocks[i] !== 0) { // BLOCK.AIR is 0
-      allAir = false;
-      break;
-    }
-  }
-
-  if (allAir) {
-    return { taskId: data.taskId, opaque: null, transparent: null };
-  }
-
-  const performanceMode = data.performanceMode;
-  const CHUNK_SIZE = 16;
-  const CHUNK_HEIGHT = 1664;
-  const WORLD_Y_OFFSET = -60;
-
-
 class DynamicFloat32Buffer {
   data: Float32Array;
   length: number = 0;
@@ -144,10 +124,54 @@ class LayerData {
   sways = new DynamicFloat32Buffer(16384);
   indices = new DynamicUint32Buffer(16384);
   offset = 0;
+  
+  reset() {
+    this.positions.length = 0;
+    this.normals.length = 0;
+    this.uvs.length = 0;
+    this.tileBases.length = 0;
+    this.colors.length = 0;
+    this.sways.length = 0;
+    this.indices.length = 0;
+    this.offset = 0;
+  }
 }
 
-    const opaque = new LayerData();
-    const transparent = new LayerData();
+const opaque = new LayerData();
+const transparent = new LayerData();
+
+const CHUNK_HEIGHT = 384;
+const masks = [
+  new Int32Array(16 * CHUNK_HEIGHT * 16), // 0: Right (+X)
+  new Int32Array(16 * CHUNK_HEIGHT * 16), // 1: Left (-X)
+  new Int32Array(16 * 16 * CHUNK_HEIGHT), // 2: Top (+Y)
+  new Int32Array(16 * 16 * CHUNK_HEIGHT), // 3: Bottom (-Y)
+  new Int32Array(16 * CHUNK_HEIGHT * 16), // 4: Front (+Z)
+  new Int32Array(16 * CHUNK_HEIGHT * 16)  // 5: Back (-Z)
+];
+
+// Auto-generated greedy mesher
+export function runMesher(data: ChunkMesherRequest): ChunkMesherResponse {
+  let allAir = true;
+  for (let i = 0; i < data.blocks.length; i++) {
+    if (data.blocks[i] !== 0) { // BLOCK.AIR is 0
+      allAir = false;
+      break;
+    }
+  }
+
+  if (allAir) {
+    return { taskId: data.taskId, opaque: null, transparent: null };
+  }
+
+  const performanceMode = data.performanceMode;
+  const CHUNK_SIZE = 16;
+  const WORLD_Y_OFFSET = -60;
+
+  for (let i = 0; i < 6; i++) masks[i].fill(0);
+  opaque.reset();
+  transparent.reset();
+
 
     const getAO = (b1: boolean, b2: boolean, b3: boolean) => {
       if (performanceMode) return 3; // No AO in performance mode
@@ -604,15 +628,6 @@ class LayerData {
       }
       layer.offset += 4;
     };
-
-    const masks = [
-      new Int32Array(16 * CHUNK_HEIGHT * 16), // 0: Right (+X)
-      new Int32Array(16 * CHUNK_HEIGHT * 16), // 1: Left (-X)
-      new Int32Array(16 * 16 * CHUNK_HEIGHT), // 2: Top (+Y)
-      new Int32Array(16 * 16 * CHUNK_HEIGHT), // 3: Bottom (-Y)
-      new Int32Array(16 * CHUNK_HEIGHT * 16), // 4: Front (+Z)
-      new Int32Array(16 * CHUNK_HEIGHT * 16)  // 5: Back (-Z)
-    ];
 
     const isSolid = (x: number, y: number, z: number, dx: number, dy: number, dz: number) => {
       const nx = x + dx;

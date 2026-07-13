@@ -966,7 +966,7 @@ export class NetworkManager {
                 const req = reqs.find(r => r.cx === chunkResp.cx && r.cz === chunkResp.cz);
                 if (req) {
                    if (chunkResp.patch) {
-                       const out = new Uint16Array(16*1664*16);
+                       const out = new Uint16Array(16*384*16);
                        out.fill(65535);
                        for(let i=0; i<chunkResp.patch.length; i+=2) {
                            out[chunkResp.patch[i]] = chunkResp.patch[i+1];
@@ -974,7 +974,7 @@ export class NetworkManager {
                        req.resolve(out);
                    } else if (chunkResp.data) {
                        const compressed = new Uint16Array(chunkResp.data);
-                       const out = new Uint16Array(16*1664*16);
+                       const out = new Uint16Array(16*384*16);
                        import('./RLE').then(({ decodeRLE }) => {
                            decodeRLE(compressed, out);
                            req.resolve(out);

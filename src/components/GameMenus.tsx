@@ -65,7 +65,7 @@ export function GameMenus({
           <InventoryUI
             inventory={game.player.inventory}
             isOpen={isInventoryOpen}
-            onClose={() => setInventoryOpen(false)}
+            onClose={() => { setInventoryOpen(false); handleStart(null); }}
             onDropItem={(type: any, count: number) => {
               if (
                 currentMode === "summerlab" &&
@@ -101,7 +101,7 @@ export function GameMenus({
             playerInventory={game.player.inventory}
             chestInventory={game.player.chestInventory}
             isOpen={isChestOpen}
-            onClose={() => setChestOpen(false)}
+            onClose={() => { setChestOpen(false); handleStart(null); }}
             onDropItem={(type: any, count: number) => {
               if (
                 currentMode === "summerlab" &&
@@ -145,7 +145,7 @@ export function GameMenus({
               npc={currentNPC}
               inventory={game.player.inventory}
               isOpen={isShopOpen}
-              onClose={() => setShopOpen(false)}
+              onClose={() => { setShopOpen(false); handleStart(null); }}
             />
           )}
           {isSettingsOpen && (

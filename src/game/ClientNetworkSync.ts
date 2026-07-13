@@ -1,5 +1,6 @@
 import { networkManager } from "./NetworkManager";
 import { Game } from "./Game";
+import { CHUNK_HEIGHT, WORLD_Y_OFFSET } from "./Chunk";
 import { skyBridgeManager } from "./SkyBridgeManager";
 import { useGameStore } from "../store/gameStore";
 import { useUIStore } from "../store/uiStore";
@@ -388,7 +389,7 @@ export class ClientNetworkSync {
 
       // 2. Check sunlight exposure (raycast straight up)
       let isExposed = true;
-      const maxHeight = 324; // CHUNK_HEIGHT (384) + WORLD_Y_OFFSET (-60)
+      const maxHeight = CHUNK_HEIGHT + WORLD_Y_OFFSET; // CHUNK_HEIGHT (384) + WORLD_Y_OFFSET (-60)
       for (let y = py + 1; y < maxHeight; y++) {
         const block = this.game.world.getBlock(px, y, pz);
         if (block !== 0 && !isTransparent(block)) {
